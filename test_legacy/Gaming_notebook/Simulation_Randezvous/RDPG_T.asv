@@ -1,0 +1,132 @@
+classdef RDPG_T < handle
+    properties
+        k, max_acc, r_allow, rate_limit, dt, mode
+        sigma_ref_prev 
+        alpha 
+        sigma_offset
+        tanker_on_prev % 이전 스텝의 선회 상태 (-1: 반대 회전, 0: 정지, 1: 정방향 회전)
+        test_mode
+    end
+    
+    methods
+        function obj = RDPG_T(k_gain, limit_G, r_allow, rate_limit, dt, init_sigma_rad, mode, alpha, sigma_offset, test_mode)
+            obj.k = k_gain;
+            obj.max_acc = limit_G * 9.81;
+            obj.r_allow = r_allow;
+            obj.rate_limit = rate_limit;
+            obj.dt = dt;
+            obj.sigma_ref_prev = init_sigma_rad;
+            obj.mode = mode;
+            if nargin < 8, obj.alpha = 1.0; else, obj.alpha = alpha; end
+            if nargin < 9, obj.sigma_offset = 0; else, obj.sigma_offset = sigma_offset; end
+            if nargin < 10, obj.test_mode = 0; else, obj.test_mode = test_mode; end
+            
+            % 초기 상태는 선회 중(1: True/Positive)으로 설정
+            obj.tanker_on_prev = 1;
+        end
+
+        function [acc_cmd, sigma_ref_filtered, tanker_turn_on] = compute_commandRDPG(obj, V_p, lambda_dot, sigma_p, r, sigma_t, r_dot, is_stop)
+            
+            % Bearing 각도 계산 (User Logic: 180 - sigma_t)
+            % 안전을 위해 abs 추가함.
+            sigma_t_deg = rad2deg(sigma_t);
+            bearing_deg = abs(180 - sigma_t_deg);
+            
+            % -----------------------------------------------------------
+            % [Logic Branch] Test Mode 여부에 따른 분기
+            % -----------------------------------------------------------
+            is_safety_maneuver = false;
+            
+            if obj.test_mode && (bearing_deg <= 50)
+                % [Condition A] Bearing이 50도 이하일 때 (위험 구역)
+                % 1. Pursuer: sigma_ref를 sigma_p로 고정 -> 현재 기동 유지 (혹은 직진)
+                x_candidate = sigma_p; 
+                
+                % 2. Tanker: -psi_t 기동 (반대 방향 선회)
+                % 시뮬레이션 루프에서 이 값이 -1이면 가속도 부호를 반대로 해야 함.
+                tanker_turn_val = -1; 
+                is_safety_maneuver = true;
+                
+            else
+                % [Condition B] 일반 상황 (기존 알고리즘)
+                % Step 1: 근 찾기
+                eqn = @(x) sqrt(r/obj.r_allow) * cos((sigma_t + x)/2) - cos(x);
+                try 
+                    x_candidate = fzero(eqn, obj.sigma_ref_prev); 
+                catch
+                    x_candidate = obj.sigma_ref_prev; 
+                end
+
+                if obj.test_mode
+                    % 기존 Test Mode 로직 (상한 제한)
+                    x_candidate = min(x_candidate, sigma_t);
+                end
+                
+                % Tanker 로직은 아래에서 기존 히스테리시스를 따름
+                tanker_turn_val = 0; % 임시 초기화
+            end
+            
+            % -----------------------------------------------------------
+            % [Step 2] Pursuer Command Calculation (Common)
+            % -----------------------------------------------------------
+            if is_safety_maneuver
+                % 안전 기동 중에는 Rate Limit 무시하고 바로 할당 (혹은 필요시 적용)
+                sigma_ref_new = x_candidate;
+            else
+                delta = x_candidate - obj.sigma_ref_prev;
+                max_change = obj.rate_limit * obj.dt;
+                if abs(delta) > max_change, delta = sign(delta) * max_change; end
+                sigma_ref_new = obj.sigma_ref_prev + delta;
+            end
+
+            % LPF Filtering
+            sigma_ref_filtered = obj.alpha * sigma_ref_new + (1 - obj.alpha) * obj.sigma_ref_prev;
+            obj.sigma_ref_prev = sigma_ref_filtered;
+
+            % -----------------------------------------------------------
+            % [Step 3] Tanker Turn Logic (Hysteresis)
+            % -----------------------------------------------------------
+            if is_safety_maneuver
+                % 안전 기동 모드에서는 강제로 -1 설정
+                obj.tanker_on_prev = tanker_turn_val;
+            else
+                % 기존 히스테리시스 로직
+                if obj.mode == 0
+                    % Lead Angle 모드
+                    margin_lead = deg2rad(0.5); 
+                    offset = deg2rad(obj.sigma_offset);
+                    
+                    if (sigma_p - sigma_t) > (offset + margin_lead)
+                        obj.tanker_on_prev = 0; % OFF
+                    elseif (sigma_p - sigma_t) < (offset - margin_lead)
+                        obj.tanker_on_prev = 1; % ON (Positive)
+                    end
+                else
+                    % Relative Distance (r_dot) 모드
+                    margin_r = 0.3;
+                    r_dot_thresh = -10;
+                    off_thresh = r_dot_thresh - margin_r; 
+                    on_thresh  = r_dot_thresh + margin_r; 
+                    
+                    if r_dot < off_thresh
+                        obj.tanker_on_prev = 0; % OFF
+                    elseif r_dot > on_thresh
+                        obj.tanker_on_prev = 1; % ON (Positive)
+                    end
+                end
+            end
+
+            % 최종 결정 (is_stop 우선)
+            if is_stop
+                tanker_turn_on = 0;
+            else
+                tanker_turn_on = obj.tanker_on_prev;
+            end
+
+            % [Step 4] 명령 생성 (Pursuer)
+            u_cmd = lambda_dot - obj.k * (sigma_p - sigma_ref_filtered);
+            raw_acc = V_p * u_cmd;
+            acc_cmd = max(min(raw_acc, obj.max_acc), -obj.max_acc);
+        end
+    end
+end

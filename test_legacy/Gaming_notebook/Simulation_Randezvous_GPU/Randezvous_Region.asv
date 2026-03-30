@@ -1,0 +1,257 @@
+function Randezvous_Region(cfg)
+    %% 파라미터 및 시뮬레이션 설정
+    R2D = 180/pi;
+    D2R = pi/180;
+    
+    % [GUIDANCE_MODE 설정]
+    GUIDANCE_MODE = cfg.GUIDANCE_MODE;
+    
+    % --- Simulation Time Param ---
+    dt = cfg.dt_region;       
+    tf = cfg.tf;       
+    
+    % --- Vehicle Spec ---
+    V_p = cfg.V_p;      
+    V_t = cfg.V_t;       
+    At_cmd = cfg.At_cmd;      
+    
+    % --- Guidance Object (수정된 부분!) ---
+    % 으헤~ 이제 메인에서 설정한 cfg 값들을 여기서 쏙쏙 뽑아 쓸 거야.
+    switch GUIDANCE_MODE
+        case 'PPNG'
+            % cfg에서 값 가져오기
+            missile_guidance = PPNG(cfg.N, cfg.bias_acc, cfg.limit_acc); 
+
+        case 'DPG'
+            % 하드코딩 제거 -> cfg 값 사용
+            missile_guidance = DPG(cfg.target_lead_angle_deg, cfg.gain_k, cfg.limit_acc); 
+        
+        case 'VDPG'
+            % 하드코딩 제거 -> cfg 값 사용
+            missile_guidance = VDPG(cfg.gain_k, cfg.limit_acc);
+        
+        otherwise
+            error('모드 없음');
+    end
+    
+    % --- [Sweep Condition] 조건 설정 ---
+    r_min_km = cfg.r_min_km; 
+    r_max_km = cfg.r_max_km;     
+    r_step_km = cfg.r_step_km;                  
+    r_vec = (r_min_km:r_step_km:r_max_km) * 1000; 
+    
+    % 타겟 진행방향(North) 기준:
+    b_min_deg = cfg.b_min_deg; 
+    b_max_deg = cfg.b_max_deg;
+    b_step_deg = cfg.b_step_deg; 
+    b_vec = (b_min_deg:b_step_deg:b_max_deg) * D2R; 
+    
+    % --- [Success Criteria] 성공 기준 ---
+    th_r = cfg.th_r;            % [수정] cfg에서 가져오도록 변경
+    th_psi_deg = cfg.th_psi_deg; % [수정] cfg에서 가져오도록 변경
+
+    if isfield(cfg, 'r_theory_m')
+        r_theory_limit = cfg.r_theory_m;
+    else
+        r_theory_limit = 1000; % 기본값
+    end
+
+    % 분석할 초기 리드각 목록
+    sigma_cases_deg = cfg.sigma_cases_deg; % [수정] cfg에서 가져오도록 변경
+    
+    % 데이터 저장을 위한 변수 초기화
+    collected_data = []; 
+    
+    %% 2. 시뮬레이션 및 플롯 준비 (Dark Theme 적용)
+    fig = figure('Position', [100 50 1400 900], 'Theme', 'dark'); 
+    t = tiledlayout(2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    
+    switch GUIDANCE_MODE
+        case 'PPNG'
+            title_str = sprintf('[Reachability Map] Mode: %s (N=%.1f)', GUIDANCE_MODE, cfg.N);
+        case 'VDPG'
+            title_str = sprintf('[Reachability Map] Mode: %s (K=%.1f)', GUIDANCE_MODE, cfg.gain_k);
+        case 'DPG'
+            title_str = sprintf('[Reachability Map] Mode: %s (K=%.1f, \\sigma_{d} = %.1f^\\circ)', ...
+                GUIDANCE_MODE, cfg.gain_k, cfg.target_lead_angle_deg);
+    end
+    title(t, title_str, 'FontSize', 16, 'FontWeight', 'bold', 'Color', 'w');
+    
+    % Target 초기 정보 (북쪽 90도 고정)
+    Xt_i = 0; Yt_i = 0;
+    psi_ti_deg = 90; psi_t = psi_ti_deg * D2R;
+    
+    %% 3. 케이스별 루프 시작
+    for s_idx = 1:length(sigma_cases_deg)
+        current_sigma_deg = sigma_cases_deg(s_idx);
+        current_sigma_rad = current_sigma_deg * D2R;
+        
+        % [수정 제안] DPG 모드일 경우, 목표 리드각(pf)을 현재 초기각(p0)으로 덮어쓰기!
+        if strcmp(GUIDANCE_MODE, 'DPG')
+            missile_guidance.sigma_des = current_sigma_rad; 
+        end
+        
+        fprintf('>>> 분석 진행 중: 초기 리드각 %d도 (%d/%d) <<<\n', ...
+            current_sigma_deg, s_idx, length(sigma_cases_deg));
+        
+        % 플롯용 데이터 초기화
+        Suc_X = []; Suc_Y = [];
+        Fail_X = []; Fail_Y = [];
+        
+        % --- 거리 및 방위각 루프 ---
+        for r_idx = 1:length(r_vec)
+            r_start = r_vec(r_idx);
+            
+            for b_idx = 1:length(b_vec)
+                bearing = b_vec(b_idx);
+                
+                % 1. 초기 위치 계산
+                theta_global = psi_t - bearing; 
+                Xp_i = Xt_i + r_start * cos(theta_global);
+                Yp_i = Yt_i + r_start * sin(theta_global);
+                
+                % 2. 초기 헤딩(psi_p) 설정
+                dx = Xt_i - Xp_i; dy = Yt_i - Yp_i;
+                lambda_init = atan2(dy, dx);
+                cur_psi_p = lambda_init + current_sigma_rad; 
+                
+                init_psi_p = cur_psi_p;
+    
+                % 변수 초기화
+                cur_Xp = Xp_i; cur_Yp = Yp_i;
+                cur_Xt = Xt_i; cur_Yt = Yt_i;
+                cur_psi_t = psi_t;
+                
+                is_success = false;
+                sim_time = 0;
+                prev_r = r_start;
+                
+                % --- Trajectory Integration ---
+                while sim_time < tf
+                    % 기하학
+                    Rx = cur_Xt - cur_Xp; Ry = cur_Yt - cur_Yp;
+                    r = sqrt(Rx^2 + Ry^2);
+                    lambda = atan2(Ry, Rx);
+                    
+                    sigma_p = cur_psi_p - lambda;
+                    sigma_t = cur_psi_t - lambda;
+                    
+                    % 상대 운동
+                    r_dot = V_t * cos(sigma_t) - V_p * cos(sigma_p);
+                    V_c = -r_dot;
+                    lambda_dot = (V_t * sin(sigma_t) - V_p * sin(sigma_p)) / r;
+                    
+                    % 유도 명령 계산
+                    switch GUIDANCE_MODE
+                        case 'PPNG'
+                            acc_cmd = missile_guidance.compute_commandPPNG(V_c, lambda_dot);
+                        case 'DPG'
+                            acc_cmd = missile_guidance.compute_commandDPG(V_p, lambda_dot, sigma_p);
+                        case 'VDPG'
+                            acc_cmd = missile_guidance.compute_commandVDPG(...
+                                V_p, lambda_dot, sigma_p, r, r_start, current_sigma_rad);
+                    end
+                    
+                    % 적분
+                    cur_psi_p = cur_psi_p + (acc_cmd/V_p)*dt;
+                    cur_psi_t = cur_psi_t + (At_cmd/V_t)*dt;
+                    
+                    cur_Xp = cur_Xp + V_p * cos(cur_psi_p) * dt;
+                    cur_Yp = cur_Yp + V_p * sin(cur_psi_p) * dt;
+                    cur_Xt = cur_Xt + V_t * cos(cur_psi_t) * dt;
+                    cur_Yt = cur_Yt + V_t * sin(cur_psi_t) * dt;
+                    
+                    sim_time = sim_time + dt;
+                    
+                    % 종료 조건 확인
+                    if (r > prev_r && r < 500) || r < th_r
+                    
+                    % 여기서 가장 작은 값을 최종 거리로 선택해!
+                    final_r = min(r, prev_r);
+                    diff_psi = abs(wrapTo180((cur_psi_p - cur_psi_t)*R2D));
+                    
+                    % 성공 여부 판단
+                    % [주의] final_r <= th_r 이므로 5.0m 딱 걸려도 성공임!
+                    if (final_r <= th_r) && (diff_psi < th_psi_deg)
+                        is_success = true;
+                        
+                        % 으헤~ 여기서 로그를 찍어보자 (이 부분 추가!)
+                        fprintf('  [DEBUG Success] r_idx=%d, b_idx=%d | th_r=%.2f | prev_r=%.4f | curr_r=%.4f | -> final_r=%.4f\n', ...
+                                r_idx, b_idx, th_r, prev_r, r, final_r);
+                    end
+                    break; 
+                    end
+                prev_r = r;
+            end
+                
+                if is_success
+                    Suc_X(end+1) = Xp_i; Suc_Y(end+1) = Yp_i;
+                    new_data = [r_start, init_psi_p * R2D, bearing * R2D, current_sigma_deg];
+                    collected_data = [collected_data; new_data];
+                else
+                    Fail_X(end+1) = Xp_i; Fail_Y(end+1) = Yp_i;
+                end
+            end
+        end
+        
+        % --- 서브플롯 그리기 ---
+        ax = nexttile;
+        set(ax, 'Color', 'k', 'XColor', 'w', 'YColor', 'w', 'GridColor', 'w', 'GridAlpha', 0.3);
+        hold(ax, 'on'); grid(ax, 'on'); axis(ax, 'equal');
+
+        % 1. 시뮬레이션 결과 점 찍기 (기존 코드 유지)
+        if ~isempty(Fail_X), plot(ax, Fail_X, Fail_Y, '.', 'MarkerSize', 5, 'Color', [1 0.4 0.4]); end
+        if ~isempty(Suc_X), plot(ax, Suc_X, Suc_Y, '.', 'MarkerSize', 6, 'Color', [0.2 1 1]); end
+        plot(ax, 0, 0, '^', 'MarkerSize', 10, 'MarkerFaceColor', 'g', 'Color', 'g');
+
+        % 2. ★ 이론적 Reachable Region 덧그리기 ★
+        % 여기서 각 함수를 호출하는 거야. 
+        % r_allow는 이론상 도달 가능한 거리인데, 시뮬레이션의 r_max나 논문의 값을 넣어야 해.
+
+        switch GUIDANCE_MODE
+            case 'PPNG'
+                draw_PPNG_Region(ax, current_sigma_rad, r_theory_limit, cfg.N);
+            case 'DPG'
+                draw_DPG_Region(ax, current_sigma_rad, r_theory_limit);
+            case 'VDPG'
+                draw_VDPG_Region(ax, current_sigma_rad, r_theory_limit);
+        end
+        
+        title(ax, sprintf('\\sigma_{p0} = %d^\\circ', current_sigma_deg), 'Color', 'w');
+        if s_idx > 3, xlabel('East [m]', 'Color', 'w'); end
+        if mod(s_idx, 3) == 1, ylabel('North [m]', 'Color', 'w'); end
+        
+        xlim([-900 10]); ylim([-20 900]); 
+        drawnow;
+    end
+    
+    fprintf('시뮬레이션 완료!\n');
+    
+    %% 4. 결과 CSV 저장
+    if ~isempty(collected_data)
+        T = array2table(collected_data, ...
+            'VariableNames', {'Initial_Range_m', 'Initial_Pursuer_Heading_Deg', 'Initial_Bearing_Deg', 'Sigma_Case_Deg'});
+        
+        switch GUIDANCE_MODE
+            case 'DPG'
+            filename = sprintf('Success_Data_%s_V=%.1f_m_s,TargetSigma=%.1f.csv', ...
+                GUIDANCE_MODE, V_t, cfg.target_lead_angle_deg);
+
+            otherwise
+            filename = sprintf('Success_Data_%s_V=%.1f_m_s.csv', GUIDANCE_MODE, V_t);
+        end
+        try
+            writetable(T, filename);
+            fprintf('\n>>> 데이터 저장 완료! 파일명: %s (%d개 데이터) <<<\n', filename, height(T));
+        catch ME
+            fprintf('\n>>> 으헤? 파일이 열려 있어서 저장이 안 되네. (Error: %s) <<<\n', ME.message);
+            timestamp = char(datetime('now', 'Format', '_HHmmss'));
+            new_filename = strrep(filename, '.csv', [timestamp '.csv']);
+            fprintf('>>> 걱정 마, "%s"로 저장할게.\n', new_filename);
+            writetable(T, new_filename);
+            fprintf('>>> 비상 저장 완료! (%d개 데이터) <<<\n', height(T));
+        end
+    else
+        fprintf('\n>>> 성공한 데이터 없음. <<<\n');
+    end
+end
