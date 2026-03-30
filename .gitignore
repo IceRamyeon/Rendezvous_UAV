@@ -1,0 +1,15 @@
+# MATLAB 기본 임시 파일
+*.asv
+*.slprj/
+*.mex*
+*.log
+*.mat
+*.fig
+
+# 프로젝트 관리 파일 (개인 설정)
+.SimulinkProject/
+_autosave_*
+
+# OS 관련 파일
+Thumbs.db
+.DS_Store
