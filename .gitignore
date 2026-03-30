@@ -5,6 +5,7 @@
 *.log
 *.mat
 *.fig
+*.csv
 
 # 프로젝트 관리 파일 (개인 설정)
 .SimulinkProject/
