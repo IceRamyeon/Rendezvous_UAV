@@ -3,6 +3,11 @@ close all;
 clc; 
 clear;
 
+addpath('./Rendezvous_Simulation/Guidance')
+addpath('./Rendezvous_Simulation/Inital_Conditions')
+addpath('./Rendezvous_Simulation/Plotting_function')
+addpath('./Rendezvous_Simulation/BRS&max_acc')
+
 %% 0. 시나리오 입력 설정 (으헤~ 여기만 바꾸면 돼!)
 % [모드 선택]
 % 'REG' : 도달 가능 영역 분석 (CSV 저장)
@@ -20,7 +25,7 @@ sigma_p0_deg = [];
 
 %% 1. 공통 파라미터 설정
 % [유도 법칙 설정]
-GUIDANCE_Switch = 2;    % 1 = PPNG, 2 = DPG, 3 = VDPG, 4 = RDPG, 5 = RDPG_T, 6 = RDPG_SAFE
+GUIDANCE_Switch = 4;    % 1 = PPNG, 2 = DPG, 3 = VDPG, 4 = RDPG, 5 = RDPG_T, 6 = RDPG_SAFE
 switch GUIDANCE_Switch
     case 1, GUIDANCE_MODE = 'PPNG';
     case 2, GUIDANCE_MODE = 'DPG';
@@ -44,7 +49,7 @@ cfg.skip_frame = 70;            % Animation 속도 조절
 
 % Stop Condition / auto save 사용여부
 cfg.stop_condition = 0;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
-cfg.auto_save = 1;
+cfg.auto_save = 0;
 
 % 저장 경로 설정 (선생의 노트북 환경에 맞게 수정!)
 target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260327 세미나 준비'; 
