@@ -1,0 +1,61 @@
+classdef PPNG
+    % PPNG 및 Variable Deviated Pursuit (VDP) 유도 클래스
+    properties
+        N           % PPNG용 유도 상수 (Effective Navigation Ratio)
+        k           % VDP용 피드백 게인 (논문 식 15의 k)
+        max_acc     % 가속도 제한값 (m/s^2)
+    end
+    
+    methods
+        %% CONSTRUCTOR
+        function obj = PPNG(N_gain, limit_G, k_gain)
+            % 생성자: N_gain, limit_G, k_gain(선택)
+            if nargin < 1, N_gain = 3; end      % 기본값 3
+            if nargin < 2, limit_G = 20; end    % 기본값 20G
+            if nargin < 3, k_gain = 2.0; end    % VDP용 게인 기본값 (적절히 튜닝 필요)
+            
+            obj.N = N_gain;
+            obj.max_acc = limit_G * 9.81; % G단위를 m/s^2로 변환
+            obj.k = k_gain;
+        end
+        
+        %% Method 1: 기존 PPNG (Proportional Navigation)
+        function acc_cmd = compute_commandPPNG(obj, V_c, lambda_dot, bias_acc)
+            if nargin < 4, bias_acc = 0; end
+            
+            % [공식] a = N * V_c * lambda_dot + bias
+            raw_acc = (obj.N * V_c * lambda_dot) + bias_acc;
+            
+            % Saturation
+            if abs(raw_acc) > obj.max_acc
+                acc_cmd = obj.max_acc * sign(raw_acc);
+            else
+                acc_cmd = raw_acc;
+            end
+        end
+        
+        %% Method 2: Variable Deviated Pursuit (논문 식 15, 16)
+        % 필요한 인자: Pursuer 속도(V_p), 시선각 변화율, 현재 리드각, 현재 거리, 초기 거리, 초기 설정 각도
+        function acc_cmd = compute_commandVDP(obj, V_p, lambda_dot, sigma_p, r, r0, sigma_init)
+            
+            % 1. [식 16] 명령 리드각 (sigma_pc) 계산
+            % 거리가 줄어들수록(r -> 0), 목표 각도도 0으로 수렴하게 만듦
+            sigma_pc = ((r0 - r) / r0) * sigma_init;
+            
+            % 2. [식 15] 유도 명령 (u = psi_dot) 계산
+            % u = lambda_dot - k * (sigma_p - sigma_pc)
+            % (참고: 논문에서는 N 대신 1*lambda_dot을 사용하고, 오차에 k 게인을 곱함)
+            u_cmd = lambda_dot - obj.k * (sigma_p - sigma_pc);
+            
+            % 3. 가속도 변환 (a = V * u)
+            raw_acc = V_p * u_cmd;
+            
+            % 4. Saturation
+            if abs(raw_acc) > obj.max_acc
+                acc_cmd = obj.max_acc * sign(raw_acc);
+            else
+                acc_cmd = raw_acc;
+            end
+        end
+    end
+end

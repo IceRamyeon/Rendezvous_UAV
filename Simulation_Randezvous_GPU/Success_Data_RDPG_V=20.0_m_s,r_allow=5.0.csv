@@ -1,0 +1,7 @@
+Initial_Range_m,Initial_Pursuer_Heading_Deg,Initial_Bearing_Deg,Sigma_Case_Deg
+600,-55,-35,0
+700,-55,-35,0
+600,-40,-35,15
+700,-40,-35,15
+600,-25,-35,30
+700,-25,-35,30

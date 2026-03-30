@@ -1,0 +1,175 @@
+clear; clc; close all;
+
+%% 1. 기본 파라미터 설정
+V = 20.0;             % 속도 (m/s)
+k_gain = 3.0;         % 유도 이득
+g = 9.81;             % 중력 가속도
+acc_limit = 1 * g;    % 가속도 제한 (1g)
+psi_t = pi / 2;       % Target Heading (90도, +y 방향)
+
+% 기준 명령 각도 (Command Lead Angle) - 이 값들에 따라 6개 플롯 생성
+sigma_pc_deg_list = [0 15 30 45 60 75];  
+sigma_pc_rad_list = deg2rad(sigma_pc_deg_list);
+
+% Sampling Parameters
+sampling_freq = 1; % Sampling하는 점들의 간격
+
+% BRS Parameters
+r_f = 2.0;
+
+%% 2. 격자(Meshgrid) 생성 (공통)
+% R: 1m ~ 200m, Theta: 90도 ~ 270도
+r_range = linspace(1, 200, 500); 
+theta_range = linspace(deg2rad(90), deg2rad(270), 400);
+[R_grid, Theta_grid] = meshgrid(r_range, theta_range);
+
+% 좌표 변환
+Px_grid = R_grid .* cos(Theta_grid);
+Py_grid = R_grid .* sin(Theta_grid);
+
+% 기하학적 각도 계산
+Lam_grid = Theta_grid + pi;       % 시선각
+Sigma_t_grid = psi_t - Lam_grid;  % 타겟 리드각
+
+%% 3. Custom Colormap 생성
+cmap = zeros(256, 3);
+cmap(1:50, :)   = repmat([0.8 0.6 1.0], 50, 1);     % Purple (-g 영역)
+cmap(51:180, :) = repmat([0.7 0.8 1.0], 130, 1);    % Blue (Safe 영역)
+cmap(181:256, :) = repmat([1.0 0.7 0.7], 76, 1);    % Red (+g 영역)
+
+%% 4. 샘플링된 점들을 저장할 셀 배열 준비
+sampled_red_points = cell(1, 6); 
+
+%% 5. 6개 서브플롯 생성 루프
+figure('Name', 'Saturation Map with Trajectories', 'Theme', 'light', 'Position', [50, 50, 1100, 850]);
+
+for i = 1:6
+    current_sigma_pc = sigma_pc_rad_list(i);
+    current_sigma_p = current_sigma_pc; 
+    current_sigma_ref = current_sigma_pc; % 궤적용 sigma_ref
+    
+    % --- 가속도 계산 ---
+    Term1 = (V^2 ./ R_grid) .* (sin(Sigma_t_grid) - sin(current_sigma_p));
+    Term2 = V * k_gain * (current_sigma_p - current_sigma_pc);
+    Acc_cmd_grid = Term1 - Term2;
+    
+    % 서브플롯 배치
+    subplot(2, 3, i); hold on; grid on; axis equal;
+    
+    % 영역 그리기
+    contourf(Px_grid, Py_grid, Acc_cmd_grid, [-100*acc_limit, -acc_limit, acc_limit, 100*acc_limit], 'LineColor', 'none');
+    colormap(gca, cmap); clim(gca, [-2*acc_limit, 2*acc_limit]); 
+    
+    % --- 빨간색 경계선(+g) 그리고 길이 계산 & 샘플링 ---
+    [C_red, ~] = contour(Px_grid, Py_grid, Acc_cmd_grid, [acc_limit acc_limit], 'r', 'LineWidth', 1.5);
+    
+    idx = 1;
+    red_boundary_length = 0;
+    temp_sampled_x = [];
+    temp_sampled_y = [];
+    
+    while idx < size(C_red, 2)
+        num_points = C_red(2, idx); 
+        x_pts = C_red(1, idx+1 : idx+num_points);
+        y_pts = C_red(2, idx+1 : idx+num_points);
+        
+        distances = sqrt(diff(x_pts).^2 + diff(y_pts).^2);
+        cum_dist = [0, cumsum(distances)];
+        red_boundary_length = red_boundary_length + cum_dist(end);
+        
+        if cum_dist(end) > 0
+            dq = 0:sampling_freq:cum_dist(end); 
+            [unique_cum_dist, unique_idx] = unique(cum_dist);
+            
+            if length(unique_cum_dist) > 1
+                sq_x = interp1(unique_cum_dist, x_pts(unique_idx), dq);
+                sq_y = interp1(unique_cum_dist, y_pts(unique_idx), dq);
+                temp_sampled_x = [temp_sampled_x, sq_x];
+                temp_sampled_y = [temp_sampled_y, sq_y];
+            end
+        end
+        idx = idx + num_points + 1; 
+    end
+    
+    % 보라색 경계선(-g) 그리기
+    contour(Px_grid, Py_grid, Acc_cmd_grid, [-acc_limit -acc_limit], 'm', 'LineWidth', 1.5);
+    sampled_red_points{i} = [temp_sampled_x', temp_sampled_y'];
+    
+    % --- 6. 이론적 BRS 경계선 (r_f 기준 파란색 점선) ---
+    sigma_t_min = current_sigma_ref;
+    sigma_t_max = pi - current_sigma_ref;
+    if sigma_t_min < sigma_t_max
+        sigma_t_brs = linspace(sigma_t_min, sigma_t_max - 0.005, 500);
+        r_brs = (r_f * cos(current_sigma_ref)^2) ./ cos((sigma_t_brs + current_sigma_ref)/2).^2;
+        r_brs(r_brs > 200) = NaN; % 범위 초과 방지
+        
+        plot_angle_R = -pi/2 - sigma_t_brs;
+        plot_angle_L = -pi/2 + sigma_t_brs;
+        
+        plot(r_brs .* cos(plot_angle_R), r_brs .* sin(plot_angle_R), 'b--', 'LineWidth', 1.2);
+        plot(r_brs .* cos(plot_angle_L), r_brs .* sin(plot_angle_L), 'b--', 'LineWidth', 1.2);
+    end
+
+    % --- 7. 샘플링된 점들로부터의 Trajectory 그리기 ---
+    for k = 1:length(temp_sampled_x)
+        x_s = temp_sampled_x(k);
+        y_s = temp_sampled_y(k);
+        r_s = sqrt(x_s^2 + y_s^2);
+        
+        % 방위각 역산을 통한 초기 sigma_t 구하기
+        plot_angle_s = atan2(y_s, x_s);
+        
+        if plot_angle_s < 0
+            plot_angle_s = plot_angle_s + 2*pi;
+        end
+        sigma_ts = -pi/2 - plot_angle_s;
+        
+        % BRS 수식을 이용해 이 궤적만의 고유한 상수 K 도출
+        K = r_s * cos((sigma_ts + current_sigma_ref)/2)^2;
+        
+        % DPG 궤적은 최종적으로 -sigma_ref를 향해 수렴함
+        sigma_t_traj = linspace(sigma_ts, -current_sigma_ref, 100);
+        r_traj = K ./ cos((sigma_t_traj + current_sigma_ref)/2).^2;
+        
+        % Target 반경(r_f) 안으로 들어가면 궤적 종료
+        valid_idx = r_traj >= r_f;
+        sigma_t_traj = sigma_t_traj(valid_idx);
+        r_traj = r_traj(valid_idx);
+        
+        if ~isempty(sigma_t_traj)
+            plot_angle_traj = -pi/2 - sigma_t_traj;
+            x_traj = r_traj .* cos(plot_angle_traj);
+            y_traj = r_traj .* sin(plot_angle_traj);
+            
+            % 궤적 그리기 (초록색 반투명 선)
+            plot(x_traj, y_traj, 'Color', [0.1 0.7 0.1 0.6], 'LineWidth', 1.0);
+        end
+    end
+    
+    % 샘플링된 시작점에 초록색 동그라미 콕콕 찍기
+    if ~isempty(temp_sampled_x)
+        scatter(temp_sampled_x, temp_sampled_y, 15, 'g', 'filled', 'MarkerEdgeColor', 'k');
+    end
+    
+    % 제목 업데이트
+    title(sprintf('Case %d: \\sigma_{pc} = %.0f^\\circ\nSampled Pts: %d', ...
+        i, sigma_pc_deg_list(i), length(temp_sampled_x)), 'FontSize', 10);
+    
+    % Target 화살표
+    quiver(0, 0, 0, 15, 'k', 'LineWidth', 1.5, 'MaxHeadSize', 0.5);
+    
+    % 축 범위 (궤적이 타겟 뒤로 돌아가는 것도 볼 수 있게 y축 하단을 살짝 늘렸어~)
+    xlim([-300, 300]); ylim([-300, 300]);
+    if i > 3, xlabel('x (m)'); end
+    if mod(i, 3) == 1, ylabel('y (m)'); end
+end
+
+sgtitle('BRS Dangerous Regions with DPG Trjectories', 'FontSize', 14, 'FontWeight', 'bold');
+
+% 범례
+axes('Position', [0.85 0.1 0.1 0.1], 'Visible', 'off');
+text(0, 0.9, 'Red: Unsafe (+g)', 'Color', 'r', 'FontWeight', 'bold', 'FontSize', 10);
+text(0, 0.6, 'Blue: Safe', 'Color', 'b', 'FontWeight', 'bold', 'FontSize', 10);
+text(0, 0.3, 'Purple: Unsafe (-g)', 'Color', 'm', 'FontWeight', 'bold', 'FontSize', 10);
+text(0, 0.0, 'Green Line: Trajectory', 'Color', [0.1 0.7 0.1], 'FontWeight', 'bold', 'FontSize', 10);
+text(0, -0.3, 'Blue Dash: BRS Limit', 'Color', 'b', 'FontWeight', 'bold', 'FontSize', 10);
