@@ -8,7 +8,7 @@ addpath('./Rendezvous_Simulation/Initial_Conditions')
 addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/BRS&max_acc')
 
-%% 0. 시나리오 입력 설정 (으헤~ 여기만 바꾸면 돼!)
+%% 0. 시나리오 입력 설정 
 % [모드 선택]
 % 'REG' : 도달 가능 영역 분석 (CSV 저장)
 % 'SIM' : 1:1 궤적 시뮬레이션
