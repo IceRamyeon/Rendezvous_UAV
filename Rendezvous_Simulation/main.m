@@ -4,7 +4,7 @@ clc;
 clear;
 
 addpath('./Rendezvous_Simulation/Guidance')
-addpath('./Rendezvous_Simulation/Inital_Conditions')
+addpath('./Rendezvous_Simulation/Initial_Conditions')
 addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/BRS&max_acc')
 
@@ -45,7 +45,7 @@ cfg.dt_region = 0.01;           % Time Step for region sweep
 cfg.dt_simul = 0.01;            % Time Step for Simulation
 cfg.tf = 60;                    % Final Time
 cfg.pause_t = 0.1;              % Pause Time
-cfg.skip_frame = 70;            % Animation 속도 조절
+cfg.skip_frame = 5;            % Animation 속도 조절
 
 % Stop Condition / auto save 사용여부
 cfg.stop_condition = 0;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
