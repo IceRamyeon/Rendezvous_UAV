@@ -16,8 +16,8 @@ RUN_MODE = 'SIM';
 
 % [초기 위치 입력 설정] (SIM 모드에서만 사용)
 input_type = 0;             % 0: 극좌표계 (a = 거리, b = 베어링각) / 1: 직교좌표계 (a = X, b = Y)
-input_a = 1000;             % input_type 0일 땐 거리[m], 1일 땐 X[m]
-input_b = -50;              % input_type 0일 땐 베어링[deg], 1일 땐 Y[m]
+input_a = 800;             % input_type 0일 땐 거리[m], 1일 땐 X[m]
+input_b = -64;              % input_type 0일 땐 베어링[deg], 1일 땐 Y[m]
 
 % [초기 리드각 설정]
 % 직접 입력하려면 숫자를 넣고 (예: 60), 자동으로 RDPG 해를 찾게 하려면 빈 대괄호 [] 로 둬.
@@ -45,15 +45,15 @@ cfg.dt_region = 0.01;           % Time Step for region sweep
 cfg.dt_simul = 0.01;            % Time Step for Simulation
 cfg.tf = 60;                    % Final Time
 cfg.pause_t = 0.1;              % Pause Time
-cfg.skip_frame = 5;            % Animation 속도 조절
+cfg.skip_frame = 70;            % Animation 속도 조절
 
 % Stop Condition / auto save 사용여부
 cfg.stop_condition = 0;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
-cfg.auto_save = 0;
+cfg.auto_save = 1;
 
-% 저장 경로 설정 (선생의 노트북 환경에 맞게 수정!)
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260327 세미나 준비'; 
-cfg.save_dir = fullfile(target_path, 'bearing = 64도,RDPG_SAFE');
+% 저장 경로 설정 (노트북 환경에 맞게 수정)
+target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260402 랩미팅 준비'; 
+cfg.save_dir = fullfile(target_path, 'bearing = 64도,RDPG');
 
 %% 2. 유도 법칙별 파라미터 통합 설정
 cfg.limit_acc = 1;              % [G] 가속도 제한

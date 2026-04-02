@@ -1,4 +1,9 @@
 clear; clc; close all;
+
+%% 0. 디렉토리 추가
+addpath('./Rendezvous_Simulation/Plotting_function');
+addpath('./Rendezvous_Simulation/BRS&max_acc');
+
 %% 1. 기본 파라미터 설정
 V = 20.0;             % 속도 (m/s)
 k_gain = 3.0;         % 유도 이득
@@ -7,7 +12,7 @@ acc_limit = 1 * g;    % 가속도 제한 (1g)
 psi_t = pi / 2;       % Target Heading (90도, +y 방향)
 
 % 기준 명령 각도 (Command Lead Angle)
-sigma_pc_deg = 62.5;
+sigma_pc_deg = 70;
 sigma_pc_rad = deg2rad(sigma_pc_deg);
 
 % Rendezvous에서 r_f > r_f_max
@@ -30,7 +35,7 @@ max_r_plot_limit = 1000; % 궤적 발산 방지용
 
 %% 2. 자동 저장 설정
 auto_save = true;
-target_path = 'C:\Users\최혁재\Desktop\대학자료\AISL 연구실\발표 사진 및 영상\260326 랩미팅 준비';
+target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260402 랩미팅 준비';
 
 save_dir = fullfile(target_path);
 
@@ -149,7 +154,7 @@ title(sprintf('BRS Region Analysis: \\sigma_{pc} = %.1f^\\circ', sigma_pc_deg), 
 quiver(0, 0, 0, 15, 'k', 'LineWidth', 1.5, 'MaxHeadSize', 0.5);
 
 % 축 범위 및 라벨
-xlim([-1000, 10]); ylim([-505, 505]);
+xlim([-50, 5]); ylim([-25, 35]);
 xlabel('x (m)', 'FontSize', 12); % asdasd
 ylabel('y (m)', 'FontSize', 12);
 

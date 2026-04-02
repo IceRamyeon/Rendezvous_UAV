@@ -470,7 +470,7 @@ if contains(GUIDANCE_MODE, 'RDPG')
     
     % draw_DPG_Region 호출 (Target Centered Frame은 Target Heading이 90도이므로 그대로 사용 가능)
     % 절댓값(abs)을 사용하여 대칭적인 영역을 그림
-    draw_DPG_Region(gca, abs(last_sigma_ref), cfg.r_allow);
+    % draw_DPG_Region(gca, abs(last_sigma_ref), cfg.r_allow);
     
     fprintf('>>> [Figure 3] Final DPG Region Drawn (Ref Sigma: %.2f deg) <<<\n', last_sigma_ref * R2D);
     xlim([-800 10])
@@ -604,10 +604,12 @@ energy_t = cumtrapz(time, acc_t_data.^2);
 % 타겟이 한 번이라도 기동했으면 그래프에 표시
 if any(acc_t_data ~= 0)
     plot(time, energy_t, 'Color', [0.5, 0, 0.5], 'LineWidth', 2); 
-    legend({'Pursuer ($a_p^2$)', 'Target ($a_t^2$)'}, 'Interpreter', 'latex', 'Location', 'best', 'TextColor', 'k');
+    % 범례 위치를 'northwest' (왼쪽 위)로 고정!
+    legend({'Pursuer ($a_p^2$)', 'Target ($a_t^2$)'}, 'Interpreter', 'latex', 'Location', 'northwest', 'TextColor', 'k');
     total_energy_str = sprintf('Total Energy\n  P: %.2f\n  T: %.2f', energy_p(end), energy_t(end));
 else
-    legend({'Pursuer ($a_p^2$)'}, 'Interpreter', 'latex', 'Location', 'best', 'TextColor', 'k');
+    % 범례 위치를 'northwest' (왼쪽 위)로 고정!
+    legend({'Pursuer ($a_p^2$)'}, 'Interpreter', 'latex', 'Location', 'northwest', 'TextColor', 'k');
     total_energy_str = sprintf('Total P: %.2f', energy_p(end));
 end
 
@@ -616,13 +618,12 @@ xlabel('Time [s]', 'Color', 'k');
 ylabel('Energy $[m^2/s^3]$', 'Interpreter', 'latex', 'Color', 'k');
 set(gca, 'XColor', 'k', 'YColor', 'k', 'GridAlpha', 0.3);
 
-% 텍스트로 최종 에너지 값 눈에 띄게 표시
-x_pos = time(end) * 0.02;
-y_max = max([max(energy_p), max(energy_t)]); % P와 T 중 더 큰 에너지 기준
-y_pos = y_max * 0.8;
-if y_pos == 0, y_pos = 0.5; end % 에너지가 0일 경우(초기화)를 대비한 예외 처리
-text(x_pos, y_pos, total_energy_str, 'Color', 'k', 'FontWeight', 'bold', ...
-    'FontSize', 10, 'BackgroundColor', 'w', 'EdgeColor', 'k', 'Margin', 2);
+% 텍스트 상자 위치를 '오른쪽 위'로 완벽하게 고정!
+% 'Units'를 'normalized'로 하면 축 데이터 값이랑 무관하게 0~1 사이의 화면 비율로 위치를 잡을 수 있어.
+text(0.98, 0.95, total_energy_str, 'Units', 'normalized', ...
+    'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', ...
+    'Color', 'k', 'FontWeight', 'bold', 'FontSize', 10, ...
+    'BackgroundColor', 'w', 'EdgeColor', 'k', 'Margin', 2);
 
 
 % =========================================================
