@@ -44,12 +44,12 @@ cfg.At_constant = cfg.V_t * deg2rad(target_turn_rate_deg);
 cfg.dt_region = 0.01;           % Time Step for region sweep
 cfg.dt_simul = 0.01;            % Time Step for Simulation
 cfg.tf = 60;                    % Final Time
-cfg.pause_t = 0.1;              % Pause Time
-cfg.skip_frame = 70;            % Animation 속도 조절
+cfg.pause_t = 1;              % Pause Time
+cfg.skip_frame = 50;            % Animation 속도 조절
 
 % Stop Condition / auto save 사용여부
-cfg.stop_condition = 0;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
-cfg.auto_save = 1;
+cfg.stop_condition = 1;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
+cfg.auto_save = 0;
 
 % 저장 경로 설정 (노트북 환경에 맞게 수정)
 target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260402 랩미팅 준비'; 

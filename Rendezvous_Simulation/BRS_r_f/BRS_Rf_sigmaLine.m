@@ -42,7 +42,7 @@ save_dir = fullfile(target_path);
 if auto_save
     if ~exist(save_dir, 'dir')
         mkdir(save_dir);
-        fprintf('\n>>> 아저씨가 전용 저장 폴더를 만들었어: %s\n', save_dir);
+        fprintf('\n>>> 전용 저장 폴더: %s\n', save_dir);
     end
 end
 
