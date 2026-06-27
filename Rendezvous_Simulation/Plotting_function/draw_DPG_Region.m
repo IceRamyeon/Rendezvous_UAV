@@ -27,12 +27,16 @@ function draw_DPG_Region(ax, sigma_p0, r_allow)
     Region_X = Xt + r_boundary .* cos(plot_angle_vec);
     Region_Y = Yt + r_boundary .* sin(plot_angle_vec);
     
-    % --- (5) 그리기 ---
-    % fill 객체에 DisplayName을 달고 범례에 표시되도록 HandleVisibility 제거
-    fill(ax, [Xt, Region_X, Xt], [Yt, Region_Y, Yt], 'y', ...
-        'FaceAlpha', 0.15, 'EdgeColor', 'none', 'DisplayName', 'Reachable Region');
+    % (추가) Target 반경 2m(r_allow)를 따라가는 안쪽 경계 좌표 생성!
+    Inner_X = Xt + r_allow .* cos(plot_angle_vec);
+    Inner_Y = Yt + r_allow .* sin(plot_angle_vec);
     
-    % 경계선은 범례에서 중복되지 않게 HandleVisibility를 끄거나 냅두기
+    % --- (5) 그리기 ---
+    % 원점 대신 Inner_X, Inner_Y를 사용해서 안쪽 2m 반경을 비워버리기
+    fill(ax, [Inner_X, fliplr(Region_X)], [Inner_Y, fliplr(Region_Y)], 'y', ...
+        'FaceAlpha', 0.15, 'EdgeColor', 'none', 'DisplayName', 'DPG Reachable Region');
+    
+    % 바깥쪽 경계선 그리기
     plot(ax, Region_X, Region_Y, 'y--', 'LineWidth', 1.5, ...
         'HandleVisibility', 'off');
 end
