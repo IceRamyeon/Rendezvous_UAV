@@ -146,7 +146,7 @@ else
     end
     
     txt_range = sprintf('%.2f m < r_f < %.2f m', r_f_min, r_f_max);
-    text(-17, -12, txt_range, 'FontSize', 16, 'FontWeight', 'bold', 'Color', 'k', 'HorizontalAlignment', 'center', 'BackgroundColor', 'w');
+    text(-17, -50, txt_range, 'FontSize', 16, 'FontWeight', 'bold', 'Color', 'k', 'HorizontalAlignment', 'center', 'BackgroundColor', 'w');
 end
 
 % =========================================================

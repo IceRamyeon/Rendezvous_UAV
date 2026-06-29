@@ -40,13 +40,14 @@ cfg.Yt_input_km = 0.0;
 cfg.psi_ti_deg = 90;
 
 % 저장 경로 설정
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260629 랩미팅 준비\1'; 
+target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260629 랩미팅 준비\2'; 
 cfg.save_dir = fullfile(target_path, 'Theorem1_Verification_1G_Clip');
 
 %% 2. Reachable한 초기 리드각 (sigma_p0) 역산 (Helper 함수 호출)
 
 RDPG_FLAG = 1;
-manual_sigma_deg = 45;
+manual_sigma_deg = 0;
+manual_sigma_rad = deg2rad(manual_sigma_deg);
 
 if RDPG_FLAG
     % 자동 계산 로직
@@ -56,6 +57,7 @@ if RDPG_FLAG
 else
     % 수동 설정 로직
     sigma_p0_deg = manual_sigma_deg;
+    sigma_p0_rad = manual_sigma_rad;
     cfg.target_lead_angle_deg = sigma_p0_deg;
     cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
 end
