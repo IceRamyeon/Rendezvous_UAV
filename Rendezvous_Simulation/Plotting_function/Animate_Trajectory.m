@@ -90,9 +90,9 @@ function Animate_Trajectory(cfg, sim_out)
 
     if cfg.auto_save == 1
         if ~exist(cfg.save_dir, 'dir'), mkdir(cfg.save_dir); end
-        vidObj3 = VideoWriter(fullfile(cfg.save_dir, 'Figure_3.avi')); open(vidObj3);
-        vidObj4 = VideoWriter(fullfile(cfg.save_dir, 'Figure_4.avi')); open(vidObj4);
-        vidObj5 = VideoWriter(fullfile(cfg.save_dir, 'Figure_5.avi')); open(vidObj5);
+        vidObj3 = VideoWriter(fullfile(cfg.save_dir, 'Figure_3.mp4'), 'MPEG-4'); open(vidObj3);
+        vidObj4 = VideoWriter(fullfile(cfg.save_dir, 'Figure_4.mp4'), 'MPEG-4'); open(vidObj4);
+        vidObj5 = VideoWriter(fullfile(cfg.save_dir, 'Figure_5.mp4'), 'MPEG-4'); open(vidObj5);
     end
 
     current_Xp = Xp_i; current_Yp = Yp_i;
