@@ -1,7 +1,6 @@
 function Plot_MaxAccPoint(cfg, sim_out, theory)
 %% Plot_MaxAccPoint.m
-% BRS_Rf_SigmaLine 레이아웃을 기반으로 검증 포인트를 띄우는 함수야.
-
+%% 0. Parameter Setting
     V = cfg.V_p;
     g = 9.81;
     acc_limit = 1 * g; % 검증용 맵 배경은 1g 기준으로 고정
@@ -22,20 +21,24 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
     r_final = r_data(end);
     sigmat_final = sigma_t_data(end);
     
-    % -----------------------------------------------------
-    % 1. 배경 격자 및 맵 (Safe Region, +g Limit)
-    % -----------------------------------------------------
-    r_range = linspace(1, 1000, 2000); 
+%% 1. Plot Contour and Max Acceleration Region
+    r_target_radius = 2.0; % 기준 반경 설정
+    
+    % 2m부터 시작해서 앞쪽을 촘촘하게 나누기
+    r_range = [linspace(r_target_radius, 50, 1500), linspace(50.5, 1000, 500)]; 
     theta_range = linspace(deg2rad(90), deg2rad(270), 400);
     [R_grid, Theta_grid] = meshgrid(r_range, theta_range);
 
     Px_grid = R_grid .* cos(Theta_grid);
     Py_grid = R_grid .* sin(Theta_grid);
 
-    Lam_grid = Theta_grid + pi;       
+    Lam_grid = Theta_grid + pi;        
     Sigma_t_grid = pi/2 - Lam_grid;  % 타겟 헤딩 psi_t = pi/2 가정
     
     Acc_cmd_grid = (V^2 ./ R_grid) .* (sin(Sigma_t_grid) - sin(sigma_pc_rad));
+    
+    % 2m 미만 영역은 NaN 처리해서 배경 비우기
+    Acc_cmd_grid(R_grid < r_target_radius) = NaN;
     
     fig = figure('Name', 'Max Acc Point Validation', 'Theme', 'light', 'Position', [100, 100, 800, 700]);
     ax = gca; 
@@ -57,9 +60,7 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
         draw_DPG_Region(ax, sigma_pc_rad, r_f_max);
     end
     
-    % -----------------------------------------------------
-    % 2. r_f_min 계산 및 Intersect Region 칠하기
-    % -----------------------------------------------------
+%% 2. Calculate R_f min and Intersect Region
     epsilon = 1e-7;
     sigma_t_calc = linspace(0, pi, 50000);
     y_calc = (sin(sigma_t_calc) - sin(sigma_pc_rad)) .* (1 + cos(sigma_t_calc + sigma_pc_rad)) ./ (cos(sigma_pc_rad)^2 + epsilon);
@@ -71,25 +72,32 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
     r_max_traj = r_f_max * (cos(sigma_pc_rad))^2 ./ cos((sigma_t_traj + sigma_pc_rad)/2).^2;
     
     max_r_plot_limit = 1000;
-    valid_idx = (r_min_traj <= max_r_plot_limit) & (r_max_traj <= max_r_plot_limit);
+    
+    valid_idx = (r_min_traj >= r_target_radius) & (r_max_traj <= max_r_plot_limit);
+    
+    r_min_traj = r_min_traj(valid_idx);
+    r_max_traj = r_max_traj(valid_idx);
     plot_angle_traj = -pi/2 - sigma_t_traj(valid_idx);
     
-    x_min = r_min_traj(valid_idx) .* cos(plot_angle_traj);
-    y_min = r_min_traj(valid_idx) .* sin(plot_angle_traj);
-    x_max = r_max_traj(valid_idx) .* cos(plot_angle_traj);
-    y_max_curve = r_max_traj(valid_idx) .* sin(plot_angle_traj);
+    x_min = r_min_traj .* cos(plot_angle_traj);
+    y_min = r_min_traj .* sin(plot_angle_traj);
+    x_max = r_max_traj .* cos(plot_angle_traj);
+    y_max_curve = r_max_traj .* sin(plot_angle_traj);
     
-    if r_f_min <= r_f_max
+    if r_f_min <= r_f_max && any(valid_idx)
         X_fill = [x_min, fliplr(x_max)];
         Y_fill = [y_min, fliplr(y_max_curve)];
         fill(X_fill, Y_fill, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 1); 
         plot(x_min, y_min, 'g-', 'LineWidth', 2);
     end
     
-    % -----------------------------------------------------
-    % 3. 궤적, 마커 및 검증 선 좌표 세팅
-    % -----------------------------------------------------
-    % [새로 추가] Pursuer 전체 궤적 그리기 (파란색 점선)
+%% 3. Mark Trajectory and Arrow
+    % 밑단 가운데를 살짝 위로(-0.2) 파서 화살촉(Arrowhead) 느낌을 줬어.
+    arrow_x = [0, -0.5, 0, 0.5];
+    arrow_y = [1, -1, -0.5, -1];
+    fill(ax, arrow_x, arrow_y, 'r', 'EdgeColor', 'k', 'LineWidth', 1.5, 'HandleVisibility', 'off');
+
+    % Pursuer 전체 궤적 그리기 (파란색 점선)
     ang_traj = -pi/2 - sigma_t_data;
     x_traj = r_data .* cos(ang_traj);
     y_traj = r_data .* sin(ang_traj);
@@ -111,7 +119,7 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
     x_final = r_final * cos(ang_final);
     y_final = r_final * sin(ang_final);
     
-    % [새로 추가] Target 중심(0,0)에서 최종 보라색 별까지 검은색 점선 긋기
+    % Target 중심(0,0)에서 최종 보라색 별까지 검은색 점선 긋기
     h_sim_rf = plot([0, x_final], [0, y_final], 'k--', 'LineWidth', 1.8);
     
     % 마커들 플롯 (궤적 위에 확실히 보이게)
@@ -119,11 +127,9 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
     h_sim = plot(x_sim, y_sim, 'bp', 'MarkerSize', 14, 'MarkerFaceColor', 'b', 'LineWidth', 1);
     h_final = plot(x_final, y_final, 'p', 'MarkerSize', 14, 'MarkerFaceColor', [0.5 0 0.5], 'MarkerEdgeColor', 'k', 'LineWidth', 1);
     
-    % -----------------------------------------------------
-    % 4. 범례 및 축 설정
-    % -----------------------------------------------------
+%% 4. Axis and Legend Setting
     title(sprintf('Max Acc Validation: \\sigma_{p0} = %.1f^\\circ', sigma_pc_deg), 'FontSize', 14, 'FontWeight', 'bold');
-    xlim([-30, 2]); ylim([-16, 16]);
+    xlim([-550, 50]); ylim([-300, 300]);
     xlabel('x (m)', 'FontSize', 12); 
     ylabel('y (m)', 'FontSize', 12);
     
@@ -139,9 +145,7 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
          'Simulated R_f Line', 'Final Point (Purple Star)'}, ...
         'Location', 'northwest', 'FontSize', 10);
         
-    % -----------------------------------------------------
-    % 5. 이미지 자동 저장
-    % -----------------------------------------------------
+%% 5. Auto Save Images
     if cfg.auto_save == 1
         if ~exist(cfg.save_dir, 'dir'), mkdir(cfg.save_dir); end
         filename = sprintf('Plot_MaxAccPoint_%.1fdeg.png', sigma_pc_deg);
