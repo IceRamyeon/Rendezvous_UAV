@@ -3,7 +3,7 @@ clear; clc; close all;
 %% =========================================================
 %  1. 기본 파라미터 및 스케일 팩터
 % =========================================================
-scale = 100;               
+scale = 1;               
 
 V = 20.0;                  
 g = 9.81;
@@ -165,12 +165,12 @@ plot3( ...
     zeros(size(theta_circle)), ...
     'k--', 'LineWidth', 1.2);
 
-xlim(ax, [-70, 10] * scale);
-ylim(ax, [-40, 40] * scale);
+xlim(ax, [-80, 0] * scale);
+ylim(ax, [-0, 80] * scale);
 zlim(ax, [0, 90 * scale]);
 
 % [핵심] z축 방향을 반대로 뒤집기
-set(ax, 'ZDir', 'reverse');
+% set(ax, 'ZDir', 'reverse');
 
 xlabel(ax, 'x (m)', 'FontSize', 12);
 ylabel(ax, 'y (m)', 'FontSize', 12);
