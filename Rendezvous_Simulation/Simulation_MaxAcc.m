@@ -1,4 +1,4 @@
-function sim_results = Simulation_MaxAcc(cfg, theory)
+function [sim_results, sim_out] = Simulation_MaxAcc(cfg, theory)
 %% Simulation_MaxAcc.m
 R2D = 180/pi;
 D2R = pi/180;
@@ -50,8 +50,7 @@ switch cfg.GUIDANCE_MODE
 end 
 
 num_steps = length(time);
-% 상태 저장 배열 크기를 8에서 10으로 확장 (sigma_ref_new, mode_flag 추가)
-hist_state = zeros(10, num_steps);
+hist_state = zeros(14, num_steps);
 
 % 시뮬레이션 연산
 for i = 1:num_steps
@@ -89,8 +88,8 @@ for i = 1:num_steps
     current_Xt = current_Xt + V_t * cos(current_psi_t) * dt;
     current_Yt = current_Yt + V_t * sin(current_psi_t) * dt;
     
-    % 상태 저장 (10개 변수 로깅)
-    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag];
+    % 상태 저장 (14개 변수 로깅)
+    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag; current_Xp; current_Yp; current_Xt; current_Yt];
     
     heading_diff_deg = abs(wrapTo180((current_psi_p - current_psi_t) * R2D));
     if r <= r_allow && heading_diff_deg < th_psi_deg

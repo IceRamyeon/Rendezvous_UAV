@@ -17,11 +17,11 @@ cfg.At_constant = 0.0;
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 80;               
+cfg.tf = 40;               
 cfg.pause_t = 0.005;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
-cfg.auto_save = 0;         
+cfg.auto_save = 1;         
 
 % [제어 및 물리적 제한 가속도] 
 cfg.limit_acc = 1;         % 1G 제한 상태에서 클리핑 거동 확인!
@@ -30,24 +30,30 @@ cfg.r_allow = 2.0;
 cfg.th_psi_deg = 5.0;      
 
 % [초기 조건 입력] 
-input_a = 800;             
-input_b = -30;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+% Pursuer 상대 위치
+input_a = 400;             
+input_b = -55;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
+% Pursuer 초기 리드각
+RDPG_FLAG = 0;
+sigma_p0_deg = 0;
+sigma_p0_rad = deg2rad(sigma_p0_deg);
+
+% Target 초기 위치 및 자세
 cfg.r_from_region_m = input_a;
 cfg.bearing_from_region = input_b;
 cfg.Xt_input_km = 0.2;     
 cfg.Yt_input_km = 0.0;
-cfg.psi_ti_deg = 90;
+cfg.psi_ti_deg = 120;
 
 % 저장 경로 설정
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260629 랩미팅 준비\2'; 
-cfg.save_dir = fullfile(target_path, 'Theorem1_Verification_1G_Clip');
+target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260703 미팅 준비\Sim4.2\Bearing 55'; 
+cfg.save_dir = fullfile(target_path);
+
+% 데이터 로그 파일 이름
+my_filename = sprintf('Scenario_SigmaP0_%d', sigma_p0_deg);
 
 %% 2. Reachable한 초기 리드각 (sigma_p0) 역산 (Helper 함수 호출)
-
-RDPG_FLAG = 0;
-manual_sigma_deg = 60;
-manual_sigma_rad = deg2rad(manual_sigma_deg);
 
 if RDPG_FLAG
     % 자동 계산 로직
@@ -56,8 +62,8 @@ if RDPG_FLAG
     cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
 else
     % 수동 설정 로직
-    sigma_p0_deg = manual_sigma_deg;
-    sigma_p0_rad = manual_sigma_rad;
+    sigma_p0_deg = sigma_p0_deg;
+    sigma_p0_rad = sigma_p0_rad;
     cfg.target_lead_angle_deg = sigma_p0_deg;
     cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
 end
@@ -74,7 +80,7 @@ fprintf('4. 예측된 최대 요구가속도 (a*) : %.4f m/s^2\n', theory.a_star
 fprintf('======================================================\n');
 
 %% 4. 검증 시뮬레이션 실행 및 결과 회수
-sim_results = Simulation_MaxAcc(cfg, theory);
+[sim_results, sim_out] = Simulation_MaxAcc(cfg, theory);
 
 %% 5. 대화창(Command Window) 최종 수치 매칭 결과 출력
 fprintf('\n======================================================\n');
@@ -95,3 +101,7 @@ fprintf('  - 예측값 (Predicted) : %.4f deg\n', theory.sigma_t_star_deg);
 fprintf('  - 실측값 (Simulated) : %.4f deg\n', sim_results.sigma_t_sim_at_max);
 fprintf('  - 절대오차 (Abs Error): %.6f deg\n', abs(theory.sigma_t_star_deg - sim_results.sigma_t_sim_at_max));
 fprintf('======================================================\n');
+
+
+% 패키징 및 저장 함수 호출
+Save_Log_Data(cfg.save_dir, my_filename, sim_out);
