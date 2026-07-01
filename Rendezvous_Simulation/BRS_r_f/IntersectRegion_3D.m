@@ -1,193 +1,105 @@
 clear; clc; close all;
 
 %% =========================================================
-%  1. 기본 파라미터 및 스케일 팩터
+%  1. 기본 파라미터 
 % =========================================================
-scale = 1;               
-
 V = 20.0;                  
 g = 9.81;
 acc_limit = 1 * g;         
-
-r_f_max = 2.0 * scale;             
-r_target_radius = 2.0 * scale;     
-max_r_plot_limit = 20000 * scale;  
-
 epsilon = 1e-7;
 
-sigma_pc_deg_list = 0 : 0.5 : 90;
+% 논문용 깔끔한 플롯을 위한 표시 한계치 (너무 멀리 가는 값 잘라내기)
+r_plot_limit = 1000.0; 
+
+% Z축(각도) 해상도
+sigma_pc_deg_list = 0 : 1 : 90; 
 num_sigma = length(sigma_pc_deg_list);
 
+% 곡면을 구성할 궤적(t) 해상도
+num_t = 300; 
+
 %% =========================================================
-%  2. Figure 준비 (3차원 뷰어 및 조명 설정)
+%  2. 3D Mesh 격자 사전 할당
 % =========================================================
-figure( ...
-    'Name', '3D Continuous Intersect Region', ...
-    'Theme', 'light', ...
-    'Position', [100, 100, 1000, 750]);
-
-ax = axes;
-hold(ax, 'on');
-grid(ax, 'on');            
-axis(ax, 'equal');
-
-view(ax, -37.5, 30); 
-
-% 파란색~초록색 컬러맵(winter) 적용
-colormap(ax, winter); 
-clim(ax, [0, 90]);         
-
-fprintf('\n====================================================\n');
-fprintf(' 3D Intersect Region 곡면 렌더링 시작 (스케일: %d)\n', scale);
-fprintf('====================================================\n');
+X_mesh = nan(num_sigma, num_t);
+Y_mesh = nan(num_sigma, num_t);
+Z_mesh = nan(num_sigma, num_t);
 
 %% =========================================================
-%  3. 보간용 3D Mesh 행렬 사전 할당
-% =========================================================
-M_side = 200; 
-num_cols = M_side * 2 + 1; 
-
-X_mesh = nan(num_sigma, num_cols);
-Y_mesh = nan(num_sigma, num_cols);
-Z_mesh = nan(num_sigma, num_cols);
-C_mesh = nan(num_sigma, num_cols);
-
-%% =========================================================
-%  4. sigma_pc = 0도 ~ 90도 Sweep (경계선 추출 및 보간)
+%  3. 표면(Surface) 경계선 계산
 % =========================================================
 for i_sigma = 1:num_sigma
+    sig_pc_deg = sigma_pc_deg_list(i_sigma);
+    sig_pc_rad = deg2rad(sig_pc_deg);
 
-    sigma_pc_deg = sigma_pc_deg_list(i_sigma);
-    sigma_pc_rad = deg2rad(sigma_pc_deg);
-
-    if abs(cos(sigma_pc_rad)) < 1e-10
+    if abs(cos(sig_pc_rad)) < 1e-10
         continue;
     end
 
-    sigma_t_calc = linspace(0, pi, 50000);
-    y_calc = (sin(sigma_t_calc) - sin(sigma_pc_rad)) ...
-        .* (1 + cos(sigma_t_calc + sigma_pc_rad)) ...
-        ./ (cos(sigma_pc_rad)^2 + epsilon);
+    % r_f_min 계산
+    t_calc = linspace(0, pi, 10000);
+    y_calc = (sin(t_calc) - sin(sig_pc_rad)) ...
+        .* (1 + cos(t_calc + sig_pc_rad)) ...
+        ./ (cos(sig_pc_rad)^2 + epsilon);
+    
+    r_f_min = (max(y_calc) * V^2) / (2 * acc_limit);
 
-    y_max_value = max(y_calc);
-    r_f_min = ((y_max_value * V^2) / (2 * acc_limit)) * scale;
+    % 곡면의 궤적(t) 범위: -sig_pc 부터 pi - sig_pc 까지
+    % 특이점을 피하기 위해 양끝에 1e-3 정도 여백을 줌
+    sig_t = linspace(-sig_pc_rad + 1e-3, pi - sig_pc_rad - 1e-3, num_t);
 
-    if r_f_min > r_f_max || r_f_min < 0
-        continue;
-    end
+    % 최소 반경(Boundary) 수식
+    denom = cos((sig_t + sig_pc_rad) / 2).^2;
+    r_min_traj = r_f_min * cos(sig_pc_rad)^2 ./ denom;
 
-    sigma_t_traj = linspace(-sigma_pc_rad, pi - sigma_pc_rad - 1e-5, 2000);
-    denominator = cos((sigma_t_traj + sigma_pc_rad) / 2).^2;
-    r_min_traj = r_f_min * cos(sigma_pc_rad)^2 ./ denominator;
-    r_max_traj = r_f_max * cos(sigma_pc_rad)^2 ./ denominator;
-    r_max_traj = min(r_max_traj, max_r_plot_limit);
+    % 값이 너무 커져서 그래프가 망가지는 것을 방지 (NaN 처리하면 깔끔하게 잘림)
+    % r_min_traj(r_min_traj > r_plot_limit) = NaN;
 
-    valid_idx = isfinite(r_min_traj) & isfinite(r_max_traj) ...
-        & (r_min_traj >= r_target_radius) & (r_max_traj >= r_min_traj);
-    valid_number = find(valid_idx);
-
-    if isempty(valid_number)
-        continue;
-    end
-
-    separate_point = [1, find(diff(valid_number) > 1) + 1, length(valid_number) + 1];
-    max_len = 0;
-    best_segment_idx = [];
-    for i_seg = 1:length(separate_point)-1
-        seg_idx = valid_number(separate_point(i_seg) : separate_point(i_seg+1)-1);
-        if length(seg_idx) > max_len
-            max_len = length(seg_idx);
-            best_segment_idx = seg_idx;
-        end
-    end
-
-    if max_len < 2
-        continue;
-    end
-
-    t_start = sigma_t_traj(best_segment_idx(1));
-    t_end   = sigma_t_traj(best_segment_idx(end));
-    t_resampled = linspace(t_start, t_end, M_side);
-
-    denom_res = cos((t_resampled + sigma_pc_rad) / 2).^2;
-    r_min_res = r_f_min * cos(sigma_pc_rad)^2 ./ denom_res;
-    r_max_res = r_f_max * cos(sigma_pc_rad)^2 ./ denom_res;
-    r_max_res = min(r_max_res, max_r_plot_limit);
-
-    plot_angle_res = -pi/2 - t_resampled;
-
-    x_min = r_min_res .* cos(plot_angle_res);
-    y_min = r_min_res .* sin(plot_angle_res);
-    x_max = r_max_res .* cos(plot_angle_res);
-    y_max = r_max_res .* sin(plot_angle_res);
-
-    X_row = [x_min, fliplr(x_max), x_min(1)];
-    Y_row = [y_min, fliplr(y_max), y_min(1)];
-    Z_row = (sigma_pc_deg * scale) * ones(size(X_row));
-    C_row = sigma_pc_deg * ones(size(X_row));
-
-    X_mesh(i_sigma, :) = X_row;
-    Y_mesh(i_sigma, :) = Y_row;
-    Z_mesh(i_sigma, :) = Z_row;
-    C_mesh(i_sigma, :) = C_row;
+    % X, Y 좌표 변환
+    plot_angle = -pi/2 - sig_t;
+    X_mesh(i_sigma, :) = r_min_traj .* cos(plot_angle);
+    Y_mesh(i_sigma, :) = r_min_traj .* sin(plot_angle);
+    
+    % Z축은 해당 층의 sigma_pc 각도
+    Z_mesh(i_sigma, :) = sig_pc_deg;
 end
 
 %% =========================================================
-%  5. 3D 단일 곡면(Surface) 생성 및 조명 효과
+%  4. 3D 렌더링
 % =========================================================
-surf(ax, X_mesh, Y_mesh, Z_mesh, C_mesh, ...
-    'EdgeColor', 'none', ...
-    'FaceColor', 'interp', ...
-    'FaceAlpha', 0.5, ...
-    'AmbientStrength', 0.4, ...
-    'DiffuseStrength', 0.8, ...
-    'SpecularStrength', 0.1);
+figure('Theme', 'light', 'Position', [150, 150, 800, 600]);
+ax = axes;
+hold(ax, 'on'); 
+grid(ax, 'on');
 
-camlight(ax, 'headlight');
-lighting(ax, 'gouraud');
+% [핵심] surf 함수로 단일 곡면 렌더링
+h_surf = surf(ax, X_mesh, Y_mesh, Z_mesh);
 
-%% =========================================================
-%  6. Target 및 후처리
-% =========================================================
-target_x = [0, -1, 0, 1] * scale;
-target_y = [1, -1, -0.3, -1] * scale;
-target_z = [0, 0, 0, 0]; 
+% 디자인 스타일링: 반투명하고 깔끔한 메쉬
+set(h_surf, ...
+    'FaceAlpha', 0.6, ...           % 투명도
+    'EdgeColor', [0.6 0.6 0.6], ... % 격자선 색상(회색)
+    'EdgeAlpha', 0.4, ...           % 격자선 투명도
+    'FaceColor', 'interp');         % 색상을 부드럽게 보간
 
-fill3( ...
-    ax, target_x, target_y, target_z, 'r', ...
-    'EdgeColor', 'k', 'LineWidth', 1.5);
+% 색상 테마: 파스텔톤 느낌을 주려면 parula가 무난해
+colormap(ax, parula); 
+clim(ax, [0, 90]);
 
-theta_circle = linspace(0, 2*pi, 300);
-plot3( ...
-    ax, ...
-    (r_target_radius * scale) * cos(theta_circle), ...
-    (r_target_radius * scale) * sin(theta_circle), ...
-    zeros(size(theta_circle)), ...
-    'k--', 'LineWidth', 1.2);
+% 축 및 시점 설정
+view(ax, -40, 30);
+xlim(ax, [-1000, 0]);
+ylim(ax, [0, 1000]);
+zlim(ax, [0, 90]);
 
-xlim(ax, [-80, 0] * scale);
-ylim(ax, [-0, 80] * scale);
-zlim(ax, [0, 90 * scale]);
+% 축 라벨 
+xlabel(ax, 'x (m)', 'FontSize', 12, 'FontWeight', 'bold');
+ylabel(ax, 'y (m)', 'FontSize', 12, 'FontWeight', 'bold');
+zlabel(ax, '\sigma_{pc} (deg)', 'FontSize', 12, 'FontWeight', 'bold');
 
-% [핵심] z축 방향을 반대로 뒤집기
-% set(ax, 'ZDir', 'reverse');
+% 축 비율 고정 (x, y는 동일하게, z는 시각적 밸런스에 맞게)
+daspect(ax, [10, 10, 1]);
 
-xlabel(ax, 'x (m)', 'FontSize', 12);
-ylabel(ax, 'y (m)', 'FontSize', 12);
-
-if scale == 1
-    zlabel(ax, '\sigma_{pc} (deg)', 'FontSize', 12);
-else
-    zlabel(ax, sprintf('\\sigma_{pc} \\times %d', scale), 'FontSize', 12);
-end
-
-title(ax, ...
-    sprintf('3D Continuous Intersect Region (Scale = %d)', scale), ...
-    'FontSize', 15, 'FontWeight', 'bold');
-
-cb = colorbar(ax);
-cb.Label.String = 'Original \sigma_{pc} (deg)';
-cb.Label.FontSize = 12;
-
-fprintf(' z축 뒤집기 처리 완료~\n');
-fprintf('====================================================\n');
+% 테두리 박스 켜서 공간감 부여
+ax.Box = 'on';
+ax.LineWidth = 1.0;
