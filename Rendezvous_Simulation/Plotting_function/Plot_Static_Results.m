@@ -12,6 +12,13 @@ function Plot_Static_Results(cfg, sim_out)
     Vc_data = hist_state(7,:);
     acc_p_data = hist_state(8,:);
 
+    % mode_flag 및 sigma_ref 데이터 추출 (배열 크기가 10 이상일 때만)
+    has_extra_data = size(hist_state, 1) >= 10;
+    if has_extra_data
+        sigma_ref_data = hist_state(9,:) * R2D;
+        mode_flag_data = hist_state(10,:);
+    end
+
     % =========================================================
     % Figure 6
     % =========================================================
@@ -26,11 +33,31 @@ function Plot_Static_Results(cfg, sim_out)
     % =========================================================
     fig7 = figure(7); set(fig7, 'Position', [520, 50, 500, 900], 'Theme', 'light');
     subplot(4,1,1); plot(time, lambda_data, 'm-', 'LineWidth', 2); grid on; title('[Fig 7-1] LOS Angle');
-    subplot(4,1,2); plot(time, sigma_p_data, 'b-', time, sigma_t_data, 'r--', 'LineWidth', 1.5); grid on; title('[Fig 7-2] Lead Angles');
+    
+    % [수정] Lead Angles 플롯에 sigma_ref 추가
+    subplot(4,1,2); hold on; grid on;
+    plot(time, sigma_p_data, 'b-', 'LineWidth', 1.5, 'DisplayName', '\sigma_p');
+    plot(time, sigma_t_data, 'r--', 'LineWidth', 1.5, 'DisplayName', '\sigma_t');
+    if has_extra_data
+        plot(time, sigma_ref_data, 'g-.', 'LineWidth', 1.5, 'DisplayName', '\sigma_{ref}');
+    end
+    title('[Fig 7-2] Lead Angles'); 
+    legend('Location', 'best'); 
+    hold off;
+
     subplot(4,1,3); plot(time, psi_p_data, 'b-', time, psi_t_data, 'r-', 'LineWidth', 2); grid on; title('[Fig 7-3] Heading Angles');
     
-    energy_p = cumtrapz(time, acc_p_data.^2);
-    subplot(4,1,4); plot(time, energy_p, 'c-', 'LineWidth', 2); grid on; title('[Fig 7-4] Control Energy');
+    % [수정] Control Energy 대신 Guidance Mode Flag 플롯으로 교체
+    subplot(4,1,4); hold on; grid on;
+    if has_extra_data
+        plot(time, mode_flag_data, 'k-', 'LineWidth', 2);
+        yticks([-1 0 1 2]);
+        ylim([-1.5, 2.5]);
+        title('[Fig 7-4] Guidance Mode Flag (0:Safe, 1:2m, 2:r_{f,min})');
+    else
+        title('[Fig 7-4] Guidance Mode Flag (No Data)');
+    end
+    hold off;
 
     % =========================================================
     % Figure 8 (RDPG_SAFE 전용)
@@ -44,13 +71,11 @@ function Plot_Static_Results(cfg, sim_out)
 
     % 이미지 저장 로직
     if cfg.auto_save == 1
-        fprintf('>>> 그래프 이미지 저장 시작...\n');
         for idx = 1:8
             if ishandle(idx)
                 filename = sprintf('Fig%02d_Result.png', idx);
                 print(figure(idx), fullfile(cfg.save_dir, filename), '-dpng', '-r150'); 
             end
         end
-        fprintf('>>> 이미지 저장 완료!\n');
     end
 end
