@@ -3,20 +3,20 @@ clear; clc; close all;
 %% =========================================================
 %  1. 기본 파라미터 및 스케일 팩터
 % =========================================================
-scale = 100;                 % 스케일 팩터 (1이면 기본 스케일, 100이면 100배 확대)
+scale = 1;                 % 스케일 팩터 (1이면 기본 스케일, 100이면 100배 확대)
 
 V = 20.0;                  
 g = 9.81;
 acc_limit = 1 * g;         
 
 % 거리/반경 파라미터에 스케일 팩터를 곱해서 전체적인 크기 동기화
-r_f_max = 2.0 * scale;             
+r_f_max = 2.0;             
 r_target_radius = 2.0 * scale;     
-max_r_plot_limit = 20000 * scale;  % 화면 밖으로 충분히 뻗어나가도록 한계치 대폭 상향
+max_r_plot_limit = 20000;  % 화면 밖으로 충분히 뻗어나가도록 한계치 대폭 상향
 
 epsilon = 1e-7;
 
-sigma_pc_deg_list = 0 : 0.1 : 90;
+sigma_pc_deg_list = 0 : 0.05 : 90;
 num_sigma = length(sigma_pc_deg_list);
 
 %% =========================================================
@@ -33,8 +33,7 @@ grid(ax, 'off');
 axis(ax, 'equal');
 
 fprintf('\n====================================================\n');
-fprintf(' Intersect Region 덧칠 시작 (스케일 팩터: %d)\n', scale);
-fprintf(' 잘림 현상 디버깅 완료\n');
+fprintf(' Intersect Region 덧칠 시작\n');
 fprintf('====================================================\n');
 
 %% =========================================================
@@ -60,7 +59,7 @@ for i_sigma = 1:num_sigma
         ./ (cos(sigma_pc_rad)^2 + epsilon);
 
     y_max_value = max(y_calc);
-    r_f_min = ((y_max_value * V^2) / (2 * acc_limit)) * scale;
+    r_f_min = ((y_max_value * V^2) / (2 * acc_limit));
 
     if r_f_min > r_f_max || r_f_min < 0
         continue;
@@ -142,14 +141,21 @@ plot( ...
     r_target_radius * sin(theta_circle), ...
     'k--', 'LineWidth', 1.2);
 
-xlim(ax, [-70, 10] * scale);
-ylim(ax, [-40, 40] * scale);
+x_lb = 100 * scale * -1;
+x_up = 10 * scale * 1;
+y_lb = 50 * scale * -1;
+y_up = 50 * scale * 1;
+
+xlim(ax, [x_lb, x_up]);
+ylim(ax, [y_lb, y_up]);
 
 xlabel(ax, 'x (m)', 'FontSize', 12);
 ylabel(ax, 'y (m)', 'FontSize', 12);
 title(ax, ...
-    sprintf('Intersect Region (Scale = %d)\n\\sigma_{pc} = 0^\\circ:0.5^\\circ:90^\\circ', scale), ...
-    'FontSize', 15, 'FontWeight', 'bold');
+    sprintf('Intersect Region ($\\sigma_{pc} \\in [0^\\circ, 90^\\circ]$)'), ...
+    'FontSize', 15, ...
+    'FontWeight', 'bold', ...
+    'Interpreter', 'latex');
 
 fprintf(' 덧칠 완료~\n');
 fprintf('====================================================\n');
