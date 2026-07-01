@@ -30,12 +30,28 @@ current_Xt = Xt_i; current_Yt = Yt_i;
 current_psi_p = psi_p; current_psi_t = psi_t;
 lambda_init = atan2(Yt_i - Yp_i, Xt_i - Xp_i);
 
-% DPG 객체 생성 (G-Limit 중복연산 방지)
-dpg_target_deg = cfg.target_lead_angle_deg;
-missile_guidance = DPG(dpg_target_deg, cfg.gain_k, cfg.limit_acc); 
+switch cfg.GUIDANCE_MODE
+    case 'RDPG_ACC'
+        % 초기 리드각 계산
+        init_sigma = current_psi_p - lambda_init;
+        
+        % RDPG_ACC 객체 생성 (클래스 이름 주의!)
+        % 주의: main_MaxAcc.m에서 cfg.rate_limit, cfg.alpha, cfg.RDPG_test를 미리 정의해야 돌아가~
+        missile_guidance = RDPG_ACC(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
+                                     dt, init_sigma);
+        
+    case 'DPG'
+        % 기존 DPG 객체 생성
+        dpg_target_deg = cfg.target_lead_angle_deg;
+        missile_guidance = DPG(dpg_target_deg, cfg.gain_k, cfg.limit_acc);
+        
+    otherwise
+        error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
+end 
 
 num_steps = length(time);
-hist_state = zeros(8, num_steps); 
+% 상태 저장 배열 크기를 8에서 10으로 확장 (sigma_ref_new, mode_flag 추가)
+hist_state = zeros(10, num_steps);
 
 % 시뮬레이션 연산
 for i = 1:num_steps
@@ -50,7 +66,20 @@ for i = 1:num_steps
     V_c = -r_dot;
     lambda_dot = (V_t * sin(sigma_t) - V_p * sin(sigma_p)) / r;
     
-    acc_cmd = missile_guidance.compute_commandDPG(V_p, lambda_dot, sigma_p);
+    % -----------------------------------------------------------
+    % [제어 명령 계산 분기]
+    % -----------------------------------------------------------
+    switch cfg.GUIDANCE_MODE
+        case 'RDPG_ACC'
+            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
+        case 'DPG'
+            acc_cmd = missile_guidance.compute_commandDPG(V_p, lambda_dot, sigma_p);
+            % DPG는 mode_flag나 sigma_ref가 없으니 더미 데이터로 채우기
+            sigma_ref_new = sigma_p; 
+            mode_flag = -1; 
+        otherwise
+            error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
+    end
     
     omega_p = acc_cmd / V_p;
     current_psi_p = current_psi_p + omega_p * dt;
@@ -60,7 +89,8 @@ for i = 1:num_steps
     current_Xt = current_Xt + V_t * cos(current_psi_t) * dt;
     current_Yt = current_Yt + V_t * sin(current_psi_t) * dt;
     
-    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd];
+    % 상태 저장 (10개 변수 로깅)
+    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag];
     
     heading_diff_deg = abs(wrapTo180((current_psi_p - current_psi_t) * R2D));
     if r <= r_allow && heading_diff_deg < th_psi_deg

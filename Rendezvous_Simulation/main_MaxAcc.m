@@ -10,18 +10,18 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 공통 시나리오 및 기하학 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_MAX
+cfg.GUIDANCE_MODE = 'RDPG_ACC'; % DPG, RDPG, RDPG_ACC
 cfg.V_p = 20.0;        
 cfg.V_t = 20.0;
 cfg.At_constant = 0.0;     
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 60;               
+cfg.tf = 80;               
 cfg.pause_t = 0.005;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
-cfg.auto_save = 1;         
+cfg.auto_save = 0;         
 
 % [제어 및 물리적 제한 가속도] 
 cfg.limit_acc = 1;         % 1G 제한 상태에서 클리핑 거동 확인!
@@ -30,8 +30,8 @@ cfg.r_allow = 2.0;
 cfg.th_psi_deg = 5.0;      
 
 % [초기 조건 입력] 
-input_a = 600;             
-input_b = -70.16;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+input_a = 800;             
+input_b = -30;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
 cfg.r_from_region_m = input_a;
 cfg.bearing_from_region = input_b;
@@ -45,8 +45,8 @@ cfg.save_dir = fullfile(target_path, 'Theorem1_Verification_1G_Clip');
 
 %% 2. Reachable한 초기 리드각 (sigma_p0) 역산 (Helper 함수 호출)
 
-RDPG_FLAG = 1;
-manual_sigma_deg = 0;
+RDPG_FLAG = 0;
+manual_sigma_deg = 60;
 manual_sigma_rad = deg2rad(manual_sigma_deg);
 
 if RDPG_FLAG

@@ -17,11 +17,11 @@ RUN_MODE = 'SIM';
 % [초기 위치 입력 설정] (SIM 모드에서만 사용)
 input_type = 0;             % 0: 극좌표계 (a = 거리, b = 베어링각) / 1: 직교좌표계 (a = X, b = Y)
 input_a = 800;             % input_type 0일 땐 거리[m], 1일 땐 X[m]
-input_b = -64;              % input_type 0일 땐 베어링[deg], 1일 땐 Y[m]
+input_b = -30;              % input_type 0일 땐 베어링[deg], 1일 땐 Y[m]
 
 % [초기 리드각 설정]
 % 직접 입력하려면 숫자를 넣고 (예: 60), 자동으로 RDPG 해를 찾게 하려면 빈 대괄호 [] 로 둬.
-sigma_p0_deg = [];          
+sigma_p0_deg = 0;          
 
 %% 1. 공통 파라미터 설정
 % [유도 법칙 설정]
@@ -48,7 +48,7 @@ cfg.pause_t = 1;              % Pause Time
 cfg.skip_frame = 50;            % Animation 속도 조절
 
 % Stop Condition / auto save 사용여부
-cfg.stop_condition = 1;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
+cfg.stop_condition = 0;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
 cfg.auto_save = 0;
 
 % 저장 경로 설정 (노트북 환경에 맞게 수정)
