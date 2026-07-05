@@ -1,4 +1,4 @@
-clear; clc; close all;
+clear; clc;
 
 %% 0. 디렉토리 추가
 addpath('./Rendezvous_Simulation/Plotting_function');
@@ -12,7 +12,7 @@ acc_limit = 1 * g;    % 가속도 제한 (1g)
 psi_t = pi / 2;       % Target Heading (90도, +y 방향)
 
 % 기준 명령 각도 (Command Lead Angle)
-sigma_pc_deg = 65;
+sigma_pc_deg = 71.77;
 sigma_pc_rad = deg2rad(sigma_pc_deg);
 
 % Rendezvous에서 r_f > r_f_max

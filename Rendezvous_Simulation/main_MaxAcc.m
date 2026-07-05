@@ -17,11 +17,11 @@ cfg.At_constant = 0.0;
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 40;               
+cfg.tf = 70;               
 cfg.pause_t = 0.005;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
-cfg.auto_save = 1;         
+cfg.auto_save = 0;         
 
 % [제어 및 물리적 제한 가속도] 
 cfg.limit_acc = 1;         % 1G 제한 상태에서 클리핑 거동 확인!
@@ -31,12 +31,12 @@ cfg.th_psi_deg = 5.0;
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치
-input_a = 400;             
-input_b = -55;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+input_a = 800;             
+input_b = -70;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
 % Pursuer 초기 리드각
 RDPG_FLAG = 0;
-sigma_p0_deg = 0;
+sigma_p0_deg = 120;
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
@@ -47,7 +47,7 @@ cfg.Yt_input_km = 0.0;
 cfg.psi_ti_deg = 120;
 
 % 저장 경로 설정
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260703 미팅 준비\Sim4.2\Bearing 55'; 
+target_path = 'C:\Users\최혁재\Desktop\대학자료\AISL 연구실\발표자료'; 
 cfg.save_dir = fullfile(target_path);
 
 % 데이터 로그 파일 이름
@@ -104,4 +104,6 @@ fprintf('======================================================\n');
 
 
 % 패키징 및 저장 함수 호출
-Save_Log_Data(cfg.save_dir, my_filename, sim_out);
+if auto_save
+    Save_Log_Data(cfg.save_dir, my_filename, sim_out);
+end
