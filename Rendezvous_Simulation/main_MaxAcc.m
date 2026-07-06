@@ -32,11 +32,11 @@ cfg.th_psi_deg = 5.0;
 % [초기 조건 입력] 
 % Pursuer 상대 위치
 input_a = 500;             
-input_b = -73;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+input_b = -63;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
 % Pursuer 초기 리드각
 RDPG_FLAG = 0;              % 초기부터 Reachability based lead angle 사용
-sigma_p0_deg = 0;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_deg = 60;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
@@ -44,10 +44,10 @@ cfg.r_from_region_m = input_a;
 cfg.bearing_from_region = input_b;
 cfg.Xt_input_km = 0.0;     
 cfg.Yt_input_km = 0.0;
-cfg.psi_ti_deg = 115;
+cfg.psi_ti_deg = 120;
 
 % 저장 경로 설정
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260703 미팅 준비\Sim4.3\73'; 
+target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260709 미팅 준비\Sim4.3\RDPG_40'; 
 cfg.save_dir = fullfile(target_path);
 
 % 데이터 로그 파일 이름
@@ -100,10 +100,30 @@ fprintf(' [3] 임계 타겟 리드각 지점 (Critical Target Lead Angle \\sigma
 fprintf('  - 예측값 (Predicted) : %.4f deg\n', theory.sigma_t_star_deg);
 fprintf('  - 실측값 (Simulated) : %.4f deg\n', sim_results.sigma_t_sim_at_max);
 fprintf('  - 절대오차 (Abs Error): %.6f deg\n', abs(theory.sigma_t_star_deg - sim_results.sigma_t_sim_at_max));
+
+%% 6. [랑데부 완료] 최종 상태 출력
+% sim_out.hist_state의 마지막 열(end)이 최종 상태를 의미해
+r_i = sim_out.init.r_i;
+bearing_i = sim_out.init.bearing_deg;
+Xp_i = sim_out.init.Xp_i;
+Yp_i = sim_out.init.Yp_i;
+
+r_f = sim_out.hist_state(1, end);
+sigma_p_f_deg = sim_out.hist_state(5, end) * (180/pi); % rad to deg
+psi_p_f_deg = sim_out.hist_state(3, end) * (180/pi);   % rad to deg
+
+fprintf('======================================================\n');
+fprintf('  [랑데부 완료]    \n');
+fprintf('======================================================\n');
+fprintf('1. Pursuer 초기 상대위치      : (%.1f m, %.1f deg)\n', r_i, bearing_i); 
+fprintf('2. Pursuer 초기 Inertial 위치 : (%.1f m, %.1f m)\n', Xp_i, Yp_i); 
+fprintf('------------------------------------------------------\n');
+fprintf('3. 최종 랑데부 거리 (r_f)       : %.4f m\n', r_f);
+fprintf('4. 최종 랑데부 리드각 (sigma_p) : %.4f deg\n', sigma_p_f_deg);
+fprintf('5. 최종 랑데부 헤딩각 (psi_p)   : %.4f deg\n', psi_p_f_deg);
 fprintf('======================================================\n');
 
-
 % 패키징 및 저장 함수 호출
-if auto_save
+if cfg.auto_save
     Save_Log_Data(cfg.save_dir, my_filename, sim_out);
 end

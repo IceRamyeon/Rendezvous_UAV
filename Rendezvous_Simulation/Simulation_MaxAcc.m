@@ -44,6 +44,18 @@ switch cfg.GUIDANCE_MODE
         % 기존 DPG 객체 생성
         dpg_target_deg = cfg.target_lead_angle_deg;
         missile_guidance = DPG(dpg_target_deg, cfg.gain_k, cfg.limit_acc);
+    case 'RDPG'
+        % RDPG 객체 생성
+        init_sigma = current_psi_p - lambda_init;
+        
+        % RDPG 전용 파라미터 내부 정의
+        rate_limit_deg = 15; % deg/s
+        rate_limit_rad = rate_limit_deg * (pi/180); % RDPG 클래스 내부 연산을 위해 rad 변환
+        alpha_val = 1.0;
+        test_mode_flag = 0;
+
+        missile_guidance = RDPG(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
+                                rate_limit_rad, dt, init_sigma, alpha_val, test_mode_flag);
         
     otherwise
         error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
@@ -75,7 +87,12 @@ for i = 1:num_steps
             acc_cmd = missile_guidance.compute_commandDPG(V_p, lambda_dot, sigma_p);
             % DPG는 mode_flag나 sigma_ref가 없으니 더미 데이터로 채우기
             sigma_ref_new = sigma_p; 
-            mode_flag = -1; 
+            mode_flag = -1;
+        case 'RDPG'
+            % RDPG.m에 정의된 compute_commandRDPG 함수 호출
+            [acc_cmd, sigma_ref_new] = missile_guidance.compute_commandRDPG(V_p, lambda_dot, sigma_p, r, sigma_t);
+            % RDPG는 mode_flag 출력이 없으니 더미 데이터로 채우기
+            mode_flag = -1;
         otherwise
             error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
     end

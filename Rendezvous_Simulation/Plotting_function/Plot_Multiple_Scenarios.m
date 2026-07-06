@@ -12,13 +12,15 @@ file_list = {
 
 % RDPG 비교군 파일 리스트 (비워두면 file_list만 단독으로 플롯함)
 file_list_comparison = {
-
+    'RDPG_67.mat', ...
+    'RDPG_70.mat', ...
+    'RDPG_73.mat'
 };
 
 % 파일이 저장된 폴더 경로
-data_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260703 미팅 준비\Sim4.3';
+data_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260709 미팅 준비\Sim4.3';
 % 자동으로 PNG를 저장할 폴더 경로
-save_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260703 미팅 준비\Sim4.3';
+save_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260709 미팅 준비\Sim4.3';
 
 % -----------------------------------------------------------
 % 2. 플롯 및 색상/마커 초기화
