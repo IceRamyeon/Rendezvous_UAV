@@ -63,14 +63,49 @@ function Animate_Trajectory(cfg, sim_out)
     P_body = R_mat * P_rel_vec;
     psi_p_body = psi_p + rot_angle;
 
-    % [추가] 초기 sigma_p 기준으로 Region 한번만 그리기
-    [X_int_init, Y_int_init, X_dpg_init, Y_dpg_init] = get_analytic_regions(initial_sigma_p, V_p, acc_limit, r_f_max);
-    if ~isempty(X_dpg_init)
-        patch(X_dpg_init, Y_dpg_init, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3, 'DisplayName', 'DPG Reachable');
+    % --- Plot_MaxAccPoint 영역 도출 방식 적용 ---
+    epsilon = 1e-7;
+    r_target_radius = 2.0;
+    
+    % r_f_min 도출
+    sigma_t_calc = linspace(0, pi, 50000);
+    y_calc = (sin(sigma_t_calc) - sin(initial_sigma_p)) .* (1 + cos(sigma_t_calc + initial_sigma_p)) ./ (cos(initial_sigma_p)^2 + epsilon);
+    [y_max, ~] = max(y_calc);
+    r_f_min = (y_max * V_p^2) / (2 * acc_limit);
+    
+    % 공통 궤적 변수
+    sigma_t_traj_full = linspace(-initial_sigma_p, pi - initial_sigma_p - 1e-5, 500);
+    r_min_traj_full = r_f_min * (cos(initial_sigma_p))^2 ./ cos((sigma_t_traj_full + initial_sigma_p)/2).^2;
+    r_max_traj_full = r_f_max * (cos(initial_sigma_p))^2 ./ cos((sigma_t_traj_full + initial_sigma_p)/2).^2;
+    
+    % 노란색 영역 (DPG Reachable Region)
+    valid_idx_dpg = (r_max_traj_full >= r_target_radius);
+    if any(valid_idx_dpg)
+        plot_angle_dpg = -pi/2 - sigma_t_traj_full(valid_idx_dpg);
+        x_dpg_min = r_target_radius .* cos(plot_angle_dpg);
+        y_dpg_min = r_target_radius .* sin(plot_angle_dpg);
+        x_dpg_max = r_max_traj_full(valid_idx_dpg) .* cos(plot_angle_dpg);
+        y_dpg_max = r_max_traj_full(valid_idx_dpg) .* sin(plot_angle_dpg);
+        
+        X_dpg = [x_dpg_min, fliplr(x_dpg_max)];
+        Y_dpg = [y_dpg_min, fliplr(y_dpg_max)];
+        patch(X_dpg, Y_dpg, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3, 'DisplayName', 'DPG Reachable Region');
     end
-    if ~isempty(X_int_init)
-        patch(X_int_init, Y_int_init, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'DisplayName', 'Intersect Region');
+
+    % 초록색 영역 (Intersect Region)
+    valid_idx_int = (r_min_traj_full >= r_target_radius) & (r_max_traj_full <= 2000); % 발산 방지 캡 적용
+    if r_f_min <= r_f_max && any(valid_idx_int)
+        plot_angle_int = -pi/2 - sigma_t_traj_full(valid_idx_int);
+        x_min = r_min_traj_full(valid_idx_int) .* cos(plot_angle_int);
+        y_min = r_min_traj_full(valid_idx_int) .* sin(plot_angle_int);
+        x_max = r_max_traj_full(valid_idx_int) .* cos(plot_angle_int);
+        y_max = r_max_traj_full(valid_idx_int) .* sin(plot_angle_int);
+        
+        X_fill = [x_min, fliplr(x_max)];
+        Y_fill = [y_min, fliplr(y_max)];
+        fill(X_fill, Y_fill, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'DisplayName', 'Intersect Region');
     end
+    % ----------------------------------------
 
     plot([0 0], [0 r_i*1.1], 'k:', 'LineWidth', 0.5, 'HandleVisibility','off'); 
     plot([0 P_body(1)], [0 P_body(2)], 'Color', [0 0.5 0], 'LineStyle', '--', 'LineWidth', 1, 'HandleVisibility','off'); 
