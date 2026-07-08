@@ -1,4 +1,4 @@
-clear; clc;
+clear; clc; close all;
 
 %% 0. 디렉토리 추가
 addpath('./Rendezvous_Simulation/Plotting_function');
@@ -12,7 +12,7 @@ acc_limit = 1 * g;    % 가속도 제한 (1g)
 psi_t = pi / 2;       % Target Heading (90도, +y 방향)
 
 % 기준 명령 각도 (Command Lead Angle)
-sigma_pc_deg = 71.77;
+sigma_pc_deg = 65;
 sigma_pc_rad = deg2rad(sigma_pc_deg);
 
 % Rendezvous에서 r_f > r_f_max
@@ -162,7 +162,7 @@ plot([r_target_radius * cos(plot_angle_intersect), line_len * cos(plot_angle_int
 
 % [삭제 완료] r_f DPG 및 r_f BRS의 별 모양 마커 표시 코드 완전 제거
 
-% 제목 업데이트6
+% 제목 업데이트
 title(sprintf('BRS Region Analysis: \\sigma_{pc} = %.1f^\\circ', sigma_pc_deg), 'FontSize', 14, 'FontWeight', 'bold');
 
 % [수정] 중심에 Target을 빨간색 삼각형으로 생성 (높이 2m, y축 범위 [-1, +1], 위를 보는 방향)
@@ -171,7 +171,7 @@ target_y = [1, -1, -1];
 fill(ax, target_x, target_y, 'r', 'EdgeColor', 'k', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 
 % 축 범위 및 라벨
-xlim([-100, 10]); ylim([-55, 55]);
+xlim([-700, 100]); ylim([-400, 400]);
 xlabel('x (m)', 'FontSize', 12); 
 ylabel('y (m)', 'FontSize', 12);
 
