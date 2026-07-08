@@ -5,22 +5,28 @@ clc; clear; close all;
 % 1. 플롯할 파일 이름 배열 설정 (여기에 파일명 추가/삭제)
 % -----------------------------------------------------------
 file_list = {
-    'Scenario_67.mat', ...
-    'Scenario_70.mat', ...
-    'Scenario_73.mat'
+    'ACC_0.mat', ...
+    'ACC_20.mat', ...
+    'ACC_40.mat'
 };
 
 % RDPG 비교군 파일 리스트 (비워두면 file_list만 단독으로 플롯함)
 file_list_comparison = {
-    'RDPG_67.mat', ...
-    'RDPG_70.mat', ...
-    'RDPG_73.mat'
+    'RDPG_0.mat', ...
+    'RDPG_20.mat', ...
+    'RDPG_40.mat'
 };
 
+% --- (추가됨) 사용자가 직접 입력하는 범례 이름 설정 ---
+% 파일 리스트 개수와 반드시 일치해야 해, 선생!
+custom_names_prop = {'UAV4 (Proposed)', 'UAV5 (Proposed)', 'UAV6 (Proposed)'};
+custom_names_comp = {'UAV1 (RDPG)', 'UAV2 (RDPG)', 'UAV3 (RDPG)'};
+% -----------------------------------------------------------
+
 % 파일이 저장된 폴더 경로
-data_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260709 미팅 준비\Sim4.3';
+data_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0709 랩미팅\Sim4.2';
 % 자동으로 PNG를 저장할 폴더 경로
-save_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260709 미팅 준비\Sim4.3';
+save_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0709 랩미팅\Sim4.2';
 
 % -----------------------------------------------------------
 % 2. 플롯 및 색상/마커 초기화
@@ -40,24 +46,34 @@ fig2     = figure('Name', 'Rendezvous Simulation Results (2/2)', 'Position', [20
 % 3. Axes 미리 세팅 (각 Subplot 핸들 지정)
 % -----------------------------------------------------------
 figure(fig_traj);
-ax0 = gca; hold on; grid on;
-title('0. Trajectory'); xlabel('X (m)'); ylabel('Y (m)'); axis equal;
+ax0 = gca; hold on; grid on; xlabel('X (m)'); ylabel('Y (m)'); axis equal;
 
 figure(fig1);
-ax1 = subplot(3, 1, 1); hold on; grid on; title('1. Relative Distance'); xlabel('Time (s)'); ylabel('Range (m)');
-ax2 = subplot(3, 1, 2); hold on; grid on; title('2. Closing Velocity'); xlabel('Time (s)'); ylabel('V_c (m/s)');
-ax3 = subplot(3, 1, 3); hold on; grid on; title('3. Pursuer Acc'); xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
+ax1 = subplot(3, 1, 1); hold on; grid on; xlabel('Time (s)'); ylabel('Range (m)');
+ax2 = subplot(3, 1, 2); hold on; grid on; xlabel('Time (s)'); ylabel('V_c (m/s)');
+ax3 = subplot(3, 1, 3); hold on; grid on; xlabel('Time (s)'); ylabel('Acceleration (m/s^2)');
 
 figure(fig2);
-ax4 = subplot(4, 1, 1); hold on; grid on; title('4. Acc vs Range'); xlabel('Range (m)'); ylabel('Acceleration (m/s^2)'); set(gca, 'XDir', 'reverse'); 
-ax5 = subplot(4, 1, 2); hold on; grid on; title('5. LOS Angle'); xlabel('Time (s)'); ylabel('\lambda (deg)');
-ax6 = subplot(4, 1, 3); hold on; grid on; title('6. Pursuer Lead Angle'); xlabel('Time (s)'); ylabel('\sigma_p (deg)');
-ax7 = subplot(4, 1, 4); hold on; grid on; title('7. Pursuer Heading Angle'); xlabel('Time (s)'); ylabel('\psi_p (deg)');
+ax4 = subplot(4, 1, 1); hold on; grid on; xlabel('Range (m)'); ylabel('Acceleration (m/s^2)'); set(gca, 'XDir', 'reverse'); 
+ax5 = subplot(4, 1, 2); hold on; grid on; xlabel('Time (s)'); ylabel('\lambda (deg)');
+ax6 = subplot(4, 1, 3); hold on; grid on; xlabel('Time (s)'); ylabel('\sigma_p (deg)');
+ax7 = subplot(4, 1, 4); hold on; grid on; xlabel('Time (s)'); ylabel('\psi_p (deg)');
+
+% --- 범례 핸들 저장을 위한 객체 배열 초기화 ---
+n_files = length(file_list);
+h0_c = gobjects(1, n_files); h0_p = gobjects(1, n_files);
+h1_c = gobjects(1, n_files); h1_p = gobjects(1, n_files);
+h2_c = gobjects(1, n_files); h2_p = gobjects(1, n_files);
+h3_c = gobjects(1, n_files); h3_p = gobjects(1, n_files);
+h4_c = gobjects(1, n_files); h4_p = gobjects(1, n_files);
+h5_c = gobjects(1, n_files); h5_p = gobjects(1, n_files);
+h6_c = gobjects(1, n_files); h6_p = gobjects(1, n_files);
+h7_c = gobjects(1, n_files); h7_p = gobjects(1, n_files);
 
 % -----------------------------------------------------------
 % 4. 반복문을 통한 데이터 로드 및 플로팅
 % -----------------------------------------------------------
-for i = 1:length(file_list)
+for i = 1:n_files
     % --- 기본 데이터 로드 ---
     full_path_prop = fullfile(data_dir, file_list{i});
     if ~exist(full_path_prop, 'file')
@@ -67,22 +83,11 @@ for i = 1:length(file_list)
     data_prop = load(full_path_prop).log_data;
     t_prop = data_prop.Time;
     
-    % 이름 및 스타일 설정
-    [~, name_prop, ~] = fileparts(file_list{i});
-    name_prop = strrep(name_prop, '_', '\_');
-    
     c_style = colors(i,:);
     m_style = markers{mod(i-1, length(markers)) + 1}; % 마커 순환
     
     mk_idx_prop = round(linspace(1, length(t_prop), 15));
     idx_r_prop  = round(linspace(1, length(data_prop.Acc_vs_Range.r), 15));
-    
-    % 범례에 표시할 이름 결정
-    if is_comparison
-        display_name_prop = [name_prop, ' (Proposed)'];
-    else
-        display_name_prop = name_prop;
-    end
     
     % --- 비교군 데이터 로드 (비교 모드일 때만 실행) ---
     if is_comparison
@@ -94,49 +99,67 @@ for i = 1:length(file_list)
         data_rdpg = load(full_path_rdpg).log_data;
         t_rdpg = data_rdpg.Time;
         
-        [~, name_rdpg, ~] = fileparts(file_list_comparison{i});
-        name_rdpg = strrep(name_rdpg, '_', '\_');
         mk_idx_rdpg = round(linspace(1, length(t_rdpg), 15));
         idx_r_rdpg  = round(linspace(1, length(data_rdpg.Acc_vs_Range.r), 15));
         
-        % RDPG 플롯 (점선)
-        plot(ax0, data_rdpg.Trajectory.Xp, data_rdpg.Trajectory.Yp, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax1, t_rdpg, data_rdpg.Relative_Distance, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax2, t_rdpg, data_rdpg.Closing_Velocity, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax3, t_rdpg, data_rdpg.Pursuer_Acc, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax4, data_rdpg.Acc_vs_Range.r, data_rdpg.Acc_vs_Range.acc, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', idx_r_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax5, t_rdpg, data_rdpg.LOS_Angle * (180/pi), '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax6, t_rdpg, data_rdpg.Pursuer_Lead_Angle * (180/pi), '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
-        plot(ax7, t_rdpg, data_rdpg.Pursuer_Heading_Angle * (180/pi), '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5, 'DisplayName', [name_rdpg, ' (RDPG)']);
+        % RDPG 플롯 (점선) - 핸들 저장
+        h0_c(i) = plot(ax0, data_rdpg.Trajectory.Xp, data_rdpg.Trajectory.Yp, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
+        h1_c(i) = plot(ax1, t_rdpg, data_rdpg.Relative_Distance, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
+        h2_c(i) = plot(ax2, t_rdpg, data_rdpg.Closing_Velocity, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
+        h3_c(i) = plot(ax3, t_rdpg, data_rdpg.Pursuer_Acc, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
+        h4_c(i) = plot(ax4, data_rdpg.Acc_vs_Range.r, data_rdpg.Acc_vs_Range.acc, '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', idx_r_rdpg, 'LineWidth', 1.5);
+        h5_c(i) = plot(ax5, t_rdpg, data_rdpg.LOS_Angle * (180/pi), '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
+        h6_c(i) = plot(ax6, t_rdpg, data_rdpg.Pursuer_Lead_Angle * (180/pi), '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
+        h7_c(i) = plot(ax7, t_rdpg, data_rdpg.Pursuer_Heading_Angle * (180/pi), '--', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_rdpg, 'LineWidth', 1.5);
     end
     
     % ==========================================
     % 기본/Proposed 데이터 플롯 (실선)
     % ==========================================
     plot(ax0, data_prop.Trajectory.Xt, data_prop.Trajectory.Yt, 'k--', 'LineWidth', 1, 'HandleVisibility', 'off'); 
-    plot(ax0, data_prop.Trajectory.Xp, data_prop.Trajectory.Yp, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
     
-    plot(ax1, t_prop, data_prop.Relative_Distance, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
-    plot(ax2, t_prop, data_prop.Closing_Velocity, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
-    plot(ax3, t_prop, data_prop.Pursuer_Acc, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
-    
-    plot(ax4, data_prop.Acc_vs_Range.r, data_prop.Acc_vs_Range.acc, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', idx_r_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
-    plot(ax5, t_prop, data_prop.LOS_Angle * (180/pi), '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
-    plot(ax6, t_prop, data_prop.Pursuer_Lead_Angle * (180/pi), '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
-    plot(ax7, t_prop, data_prop.Pursuer_Heading_Angle * (180/pi), '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5, 'DisplayName', display_name_prop);
+    % Proposed 플롯 - 핸들 저장
+    h0_p(i) = plot(ax0, data_prop.Trajectory.Xp, data_prop.Trajectory.Yp, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
+    h1_p(i) = plot(ax1, t_prop, data_prop.Relative_Distance, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
+    h2_p(i) = plot(ax2, t_prop, data_prop.Closing_Velocity, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
+    h3_p(i) = plot(ax3, t_prop, data_prop.Pursuer_Acc, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
+    h4_p(i) = plot(ax4, data_prop.Acc_vs_Range.r, data_prop.Acc_vs_Range.acc, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', idx_r_prop, 'LineWidth', 1.5);
+    h5_p(i) = plot(ax5, t_prop, data_prop.LOS_Angle * (180/pi), '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
+    h6_p(i) = plot(ax6, t_prop, data_prop.Pursuer_Lead_Angle * (180/pi), '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
+    h7_p(i) = plot(ax7, t_prop, data_prop.Pursuer_Heading_Angle * (180/pi), '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
 end
 
 % -----------------------------------------------------------
-% 5. 범례(Legend) 추가
+% 5. 범례(Legend) 추가 및 2열 정렬
 % -----------------------------------------------------------
-legend(ax0, 'Location', 'best');
-legend(ax1, 'Location', 'best');
-legend(ax2, 'Location', 'best');
-legend(ax3, 'Location', 'best');
-legend(ax4, 'Location', 'best');
-legend(ax5, 'Location', 'best');
-legend(ax6, 'Location', 'best');
-legend(ax7, 'Location', 'best');
+if is_comparison
+    % 비교군 핸들과 제안 핸들을 합치고, 2열로 배치
+    lgd_handles_0 = [h0_c, h0_p]; lgd_handles_1 = [h1_c, h1_p];
+    lgd_handles_2 = [h2_c, h2_p]; lgd_handles_3 = [h3_c, h3_p];
+    lgd_handles_4 = [h4_c, h4_p]; lgd_handles_5 = [h5_c, h5_p];
+    lgd_handles_6 = [h6_c, h6_p]; lgd_handles_7 = [h7_c, h7_p];
+    
+    lgd_labels = [custom_names_comp, custom_names_prop];
+    cols = 2;
+else
+    % 비교군이 없으면 Proposed만 플롯
+    lgd_handles_0 = h0_p; lgd_handles_1 = h1_p;
+    lgd_handles_2 = h2_p; lgd_handles_3 = h3_p;
+    lgd_handles_4 = h4_p; lgd_handles_5 = h5_p;
+    lgd_handles_6 = h6_p; lgd_handles_7 = h7_p;
+    
+    lgd_labels = custom_names_prop;
+    cols = 1;
+end
+
+legend(ax0, lgd_handles_0, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax1, lgd_handles_1, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax2, lgd_handles_2, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax3, lgd_handles_3, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax4, lgd_handles_4, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax5, lgd_handles_5, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax6, lgd_handles_6, lgd_labels, 'NumColumns', cols, 'Location', 'best');
+legend(ax7, lgd_handles_7, lgd_labels, 'NumColumns', cols, 'Location', 'best');
 
 % -----------------------------------------------------------
 % 6. 자동 저장 (Auto Save) 기능
