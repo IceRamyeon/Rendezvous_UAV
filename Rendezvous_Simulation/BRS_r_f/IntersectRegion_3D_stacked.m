@@ -184,7 +184,7 @@ end
 %     'FontSize', 15, 'FontWeight', 'bold');
 
 cb = colorbar(ax);
-cb.Label.String = 'Original \sigma_{pc} (deg)';
+cb.Label.String = '\sigma_{p} (deg)';
 cb.Label.FontSize = 12;
 
 fprintf(' plot 완료\n');
