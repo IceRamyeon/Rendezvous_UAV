@@ -17,8 +17,8 @@ cfg.At_constant = 0.0;
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 50;               
-cfg.pause_t = 0.01;        
+cfg.tf = 60;               
+cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
 cfg.auto_save = 0;         
@@ -32,7 +32,7 @@ cfg.th_psi_deg = 5.0;
 % [초기 조건 입력] 
 % Pursuer 상대 위치
 input_a = 500;             
-input_b = -65;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+input_b = -40;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
 % Pursuer 초기 리드각
 RDPG_FLAG = 0;              % 초기부터 Reachability based lead angle 사용
