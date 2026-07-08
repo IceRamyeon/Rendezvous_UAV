@@ -25,9 +25,11 @@ classdef RDPG_ACC < handle
             if r >= r_fade_start
                 dynamic_eps = eps_max;
             elseif r > r_fade_end
+                % 15m ~ 2m 사이에서는 선형적으로 부드럽게 감소
                 alpha = (r - r_fade_end) / (r_fade_start - r_fade_end);
                 dynamic_eps = eps_min + alpha * (eps_max - eps_min);
             else
+                % 종말 단계에서는 오차 없는 순정 상태 유지
                 dynamic_eps = eps_min;
             end
             % =======================================================
