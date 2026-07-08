@@ -18,7 +18,7 @@ cfg.At_constant = 0.0;
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
 cfg.tf = 50;               
-cfg.pause_t = 0.005;        
+cfg.pause_t = 0.01;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
 cfg.auto_save = 0;         
@@ -36,7 +36,7 @@ input_b = -65;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5�
 
 % Pursuer 초기 리드각
 RDPG_FLAG = 0;              % 초기부터 Reachability based lead angle 사용
-sigma_p0_deg = 100;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_deg = 0;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
