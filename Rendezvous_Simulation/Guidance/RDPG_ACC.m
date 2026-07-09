@@ -35,11 +35,11 @@ classdef RDPG_ACC < handle
             % =======================================================
 
             % -----------------------------------------------------------
-            % [1단계 & 2단계] 경계선 도출
+            % [1단계] r_f_min 계산하여 현재 Pursuer가 Reachable Region 내에 있는지 확인
             % -----------------------------------------------------------
             sigma_t_calc = linspace(0, pi, 1000); 
             
-            % 기존 1e-7 대신 dynamic_eps 적용
+            % r_f_min 계산
             y_calc = (sin(sigma_t_calc) - sin(sigma_p)) .* (1 + cos(sigma_t_calc + sigma_p)) ./ (cos(sigma_p)^2 + dynamic_eps);
             y_max = max(y_calc);
             
@@ -51,28 +51,25 @@ classdef RDPG_ACC < handle
             r_contour_max = obj.r_f_max * (cos(sigma_p))^2 / denom_contour;
 
             % -----------------------------------------------------------
-            % [3단계] Safe / Unsafe 판별
+            % [2단계] Safe / Unsafe 판별
             % -----------------------------------------------------------
             if r >= r_contour_min && r <= r_contour_max
                 x_candidate = sigma_p;
                 mode_flag = 0; 
             else
                 % -------------------------------------------------------
-                % [4단계 & 5단계] Unsafe 시 새로운 sigma_pc 탐색
+                % [3단계] Unsafe 시 새로운 sigma_pc 탐색
                 % -------------------------------------------------------
-                % (앞서 논의한 목표 조준점 빡빡하게 잡는 로직 적용 예시)
-                tight_r = obj.r_f_max * 1.0; % 필요에 따라 0.7~0.9 사이 조절
-                eqn = @(x) sqrt(r/tight_r) * cos((sigma_t + x)/2) - cos(x);
+                eqn = @(x) sqrt(r/obj.r_f_max) * cos((sigma_t + x)/2) - cos(x);
                 
                 try
                     x_candidate = fzero(eqn, obj.sigma_ref_prev);
                     
-                    % 새로운 x_candidate 검증 시에도 dynamic_eps 적용!
+                    % 
                     y_calc_new = (sin(sigma_t_calc) - sin(x_candidate)) .* (1 + cos(sigma_t_calc + x_candidate)) ./ (cos(x_candidate)^2 + dynamic_eps);
                     y_max_new = max(y_calc_new);
                     r_f_min_new = (y_max_new * V_p^2) / (2 * obj.max_acc);
                     
-                    % 포기 판정은 타이트한 반경이 아니라 원래 반경(r_f_max) 기준
                     if r_f_min_new > obj.r_f_max
                         mode_flag = 2;
                         x_candidate = obj.sigma_ref_prev; 
