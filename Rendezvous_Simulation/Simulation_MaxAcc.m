@@ -34,32 +34,40 @@ switch cfg.GUIDANCE_MODE
     case 'RDPG_ACC'
         % 초기 리드각 계산
         init_sigma = current_psi_p - lambda_init;
-        
-        % RDPG_ACC 객체 생성 (클래스 이름 주의!)
-        % 주의: main_MaxAcc.m에서 cfg.rate_limit, cfg.alpha, cfg.RDPG_test를 미리 정의해야 돌아가~
-        missile_guidance = RDPG_ACC(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
-                                     dt, init_sigma);
+        missile_guidance = RDPG_ACC(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma);
         
     case 'DPG'
         % 기존 DPG 객체 생성
         dpg_target_deg = cfg.target_lead_angle_deg;
         missile_guidance = DPG(dpg_target_deg, cfg.gain_k, cfg.limit_acc);
+        
     case 'RDPG'
         % RDPG 객체 생성
         init_sigma = current_psi_p - lambda_init;
-        
-        % RDPG 전용 파라미터 내부 정의
-        rate_limit_deg = 15; % deg/s
-        rate_limit_rad = rate_limit_deg * (pi/180); % RDPG 클래스 내부 연산을 위해 rad 변환
+        rate_limit_rad = 15 * (pi/180); 
         alpha_val = 1.0;
         test_mode_flag = 0;
-
         missile_guidance = RDPG(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
                                 rate_limit_rad, dt, init_sigma, alpha_val, test_mode_flag);
+                                
+    case 'RDPG_VT'
+        % [추가된 부분] RDPG_VT 객체 생성
+        init_sigma_real = current_psi_p - lambda_init;
+        init_sigma_vt = 0; % 가상 타겟용 초기 시선각 오차는 0으로 시작
+        
+        % 가상 타겟 전용 유도 파라미터 (필요하면 main에서 cfg로 넘기도록 빼도 돼)
+        rate_limit_rad_vt = 15 * (pi/180);
+        alpha_val_vt = 1.0;
+        test_mode_flag_vt = 0;
+        
+        missile_guidance = RDPG_VT(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
+                                   dt, init_sigma_real, ...
+                                   cfg.r_allow, rate_limit_rad_vt, alpha_val_vt, test_mode_flag_vt, init_sigma_vt, ...
+                                   cfg.r_vt, cfg.theta_vt_rad);
         
     otherwise
         error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
-end 
+end
 
 num_steps = length(time);
 hist_state = zeros(16, num_steps); 
@@ -95,7 +103,6 @@ for i = 1:num_steps
             [acc_cmd, sigma_ref_new] = missile_guidance.compute_commandRDPG(V_p, lambda_dot, sigma_p, r, sigma_t);
             mode_flag = -1;
         case 'RDPG_VT'
-            % RDPG_VT는 절대 좌표계 상태 변수를 통째로 받도록 구성됨
             [acc_cmd, sigma_ref_new, mode_flag, x_vt_log, y_vt_log] = missile_guidance.compute_command(...
                 current_Xp, current_Yp, V_p, current_psi_p, ...
                 current_Xt, current_Yt, V_t, current_psi_t);
