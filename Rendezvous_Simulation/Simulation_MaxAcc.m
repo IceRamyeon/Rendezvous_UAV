@@ -62,9 +62,9 @@ switch cfg.GUIDANCE_MODE
 end 
 
 num_steps = length(time);
-hist_state = zeros(14, num_steps);
-
-% 시뮬레이션 연산
+hist_state = zeros(16, num_steps); 
+    
+% 시뮬레이션 연산[cite: 4]
 for i = 1:num_steps
     Rx = current_Xt - current_Xp; Ry = current_Yt - current_Yp;
     r = sqrt(Rx^2 + Ry^2);
@@ -78,21 +78,27 @@ for i = 1:num_steps
     lambda_dot = (V_t * sin(sigma_t) - V_p * sin(sigma_p)) / r;
     
     % -----------------------------------------------------------
-    % [제어 명령 계산 분기]
+    % [제어 명령 계산 분기][cite: 4]
     % -----------------------------------------------------------
+    % 가상 타겟 좌표를 안 쓰는 모드들을 위해 기본값은 NaN으로 처리
+    x_vt_log = NaN;
+    y_vt_log = NaN;
+    
     switch cfg.GUIDANCE_MODE
         case 'RDPG_ACC'
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
         case 'DPG'
             acc_cmd = missile_guidance.compute_commandDPG(V_p, lambda_dot, sigma_p);
-            % DPG는 mode_flag나 sigma_ref가 없으니 더미 데이터로 채우기
             sigma_ref_new = sigma_p; 
             mode_flag = -1;
         case 'RDPG'
-            % RDPG.m에 정의된 compute_commandRDPG 함수 호출
             [acc_cmd, sigma_ref_new] = missile_guidance.compute_commandRDPG(V_p, lambda_dot, sigma_p, r, sigma_t);
-            % RDPG는 mode_flag 출력이 없으니 더미 데이터로 채우기
             mode_flag = -1;
+        case 'RDPG_VT'
+            % RDPG_VT는 절대 좌표계 상태 변수를 통째로 받도록 구성됨
+            [acc_cmd, sigma_ref_new, mode_flag, x_vt_log, y_vt_log] = missile_guidance.compute_command(...
+                current_Xp, current_Yp, V_p, current_psi_p, ...
+                current_Xt, current_Yt, V_t, current_psi_t);
         otherwise
             error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
     end
@@ -105,8 +111,8 @@ for i = 1:num_steps
     current_Xt = current_Xt + V_t * cos(current_psi_t) * dt;
     current_Yt = current_Yt + V_t * sin(current_psi_t) * dt;
     
-    % 상태 저장 (14개 변수 로깅)
-    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag; current_Xp; current_Yp; current_Xt; current_Yt];
+    % 상태 저장 (16개 변수 로깅: 맨 뒤에 가상 타겟 x, y 추가)[cite: 4]
+    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag; current_Xp; current_Yp; current_Xt; current_Yt; x_vt_log; y_vt_log];
     
     heading_diff_deg = abs(wrapTo180((current_psi_p - current_psi_t) * R2D));
     if r <= r_allow && heading_diff_deg < th_psi_deg
