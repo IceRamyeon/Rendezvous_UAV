@@ -100,6 +100,17 @@ function Animate_Trajectory(cfg, sim_out)
         Y_fill = [y_min, fliplr(y_max)];
         fill(X_fill, Y_fill, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'DisplayName', 'Intersect Region');
     end
+    
+    % --- [추가] 초기 +g Limit 영역 그리기 ---
+    sigma_t_g_init = linspace(0, pi, 300);
+    r_glimit_init = (V_p^2 / acc_limit) * (sin(sigma_t_g_init) - sin(initial_sigma_p));
+    valid_g_init = r_glimit_init > 0;
+    if any(valid_g_init)
+        plot_angle_g_init = -pi/2 - sigma_t_g_init(valid_g_init);
+        x_g_init = r_glimit_init(valid_g_init) .* cos(plot_angle_g_init);
+        y_g_init = r_glimit_init(valid_g_init) .* sin(plot_angle_g_init);
+        plot(x_g_init, y_g_init, 'r', 'LineWidth', 1.5, 'DisplayName', '+g Limit');
+    end
 
     plot([0 0], [0 r_i*1.1], 'k:', 'LineWidth', 0.5, 'HandleVisibility','off'); 
     plot([0 P_body(1)], [0 P_body(2)], 'Color', [0 0.5 0], 'LineStyle', '--', 'LineWidth', 1, 'HandleVisibility','off'); 
@@ -119,6 +130,7 @@ function Animate_Trajectory(cfg, sim_out)
     % Figure 3, 4, 5: Animation Setup[cite: 6]
     % =========================================================
     fig3 = figure('Position', [50 50 450 450], 'Name', '3. Target Centered', 'Theme', 'light'); grid on; axis equal; hold on;
+    % [추가] Figure 3용 Region Patch (초기엔 빈 데이터로 세팅)
     h_dpg_region_fig3 = patch(nan, nan, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
     h_int_region_fig3 = patch(nan, nan, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5);
     
@@ -141,6 +153,7 @@ function Animate_Trajectory(cfg, sim_out)
             'Color', [0.6 0.4 0.8], 'HorizontalAlignment', 'center', 'FontWeight', 'bold');
     end
     % ---------------------------------------------------------
+    h_glimit_fig3 = plot(nan, nan, 'r', 'LineWidth', 1.5); % [추가] 실시간 +g Limit
     
     h_traj_relT = animatedline('Color', 'b', 'LineWidth', 1.5);
     h_arrow_T_fixed = patch('Vertices', nan(4,2), 'Faces', [1 2 3 4], 'FaceColor', 'r'); 
@@ -186,7 +199,8 @@ function Animate_Trajectory(cfg, sim_out)
             set(h_arrow_P_rel, 'Vertices', get_arrow_vertices(pos_P_in_Tframe(1), pos_P_in_Tframe(2), current_psi_p + rot_ang_T, arrow_scale));
             set(h_arrow_T_fixed, 'Vertices', get_arrow_vertices(0, 0, pi/2, arrow_scale));
 
-            [X_int, Y_int, X_dpg, Y_dpg] = get_analytic_regions(current_sigma_p, V_p, acc_limit, r_f_max);
+            % 현재 리드각 기준으로 Boundary 계산해서 실시간으로 덮어씌우기
+            [X_int, Y_int, X_dpg, Y_dpg, X_g, Y_g] = get_analytic_regions(current_sigma_p, V_p, acc_limit, r_f_max);
             
             if isempty(X_dpg)
                 set(h_dpg_region_fig3, 'XData', nan, 'YData', nan);
@@ -198,6 +212,13 @@ function Animate_Trajectory(cfg, sim_out)
                 set(h_int_region_fig3, 'XData', nan, 'YData', nan);
             else
                 set(h_int_region_fig3, 'XData', X_int, 'YData', Y_int);
+            end
+
+            % [추가] 실시간 +g Limit 업데이트
+            if isempty(X_g)
+                set(h_glimit_fig3, 'XData', nan, 'YData', nan);
+            else
+                set(h_glimit_fig3, 'XData', X_g, 'YData', Y_g);
             end
 
             % --- Fig 4 ---
@@ -248,7 +269,8 @@ function V_rot = get_arrow_vertices(x, y, psi, scale)
     V_rot(:,2) = V_rot(:,2) + y; 
 end
 
-function [X_int, Y_int, X_dpg, Y_dpg] = get_analytic_regions(sigma_p_rad, V, acc_limit, r_f_max)
+function [X_int, Y_int, X_dpg, Y_dpg, X_glimit, Y_glimit] = get_analytic_regions(sigma_p_rad, V, acc_limit, r_f_max)
+    % Meshgrid 없이 수식만으로 Region 폴리곤 영역 좌표를 뽑아내는 함수
     epsilon = 1e-7;
     r_target_radius = 2.0;
     
@@ -292,5 +314,17 @@ function [X_int, Y_int, X_dpg, Y_dpg] = get_analytic_regions(sigma_p_rad, V, acc
         end
     else
         X_int = []; Y_int = [];
+    end
+
+    % --- [추가] +g Limit Curve (빨간선) ---
+    sigma_t_g = linspace(0, pi, 300);
+    r_g = (V^2 / acc_limit) * (sin(sigma_t_g) - sin(sigma_p_rad));
+    valid_g = r_g > 0;
+    if any(valid_g)
+        plot_angle_g = -pi/2 - sigma_t_g(valid_g);
+        X_glimit = r_g(valid_g) .* cos(plot_angle_g);
+        Y_glimit = r_g(valid_g) .* sin(plot_angle_g);
+    else
+        X_glimit = []; Y_glimit = [];
     end
 end
