@@ -16,7 +16,7 @@ classdef RDPG_ACC < handle
         function [acc_cmd, sigma_ref_filtered, mode_flag] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t)
             
             % =======================================================
-            % [추가] 동적 Epsilon 스케줄링 로직
+            % Dynamic Epsilon 스케줄링 로직
             % =======================================================
             eps_max = 0.01;
             eps_min = 1e-7;

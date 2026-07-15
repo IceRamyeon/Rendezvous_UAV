@@ -40,7 +40,7 @@ classdef RDPG_VT < handle
             if nargin < 8, obj.alpha_vt = 1.0; else, obj.alpha_vt = alpha_vt; end
         end
 
-        function [acc_cmd, mode_flag, x_vt, y_vt] = compute_command(obj, x_p, y_p, V_p, chi_p, x_t, y_t, V_t, chi_t)
+        function [acc_cmd, sigma_ref_new, mode_flag, x_vt, y_vt] = compute_command(obj, x_p, y_p, V_p, chi_p, x_t, y_t, V_t, chi_t)
             
             % -----------------------------------------------------------
             % [0단계] 실제 타겟(Real Target)에 대한 상대 운동학 계산
@@ -161,6 +161,8 @@ classdef RDPG_VT < handle
                 % LPF 적용
                 sigma_ref_filtered_vt = obj.alpha_vt * sigma_ref_new_vt + (1 - obj.alpha_vt) * obj.sigma_ref_prev_vt;
                 obj.sigma_ref_prev_vt = sigma_ref_filtered_vt;
+
+                sigma_ref_new = sigma_ref_filtered_vt;
                 
                 % 가속도 명령 생성
                 u_cmd = lambda_dot_vt - obj.k * (sigma_p_vt - sigma_ref_filtered_vt);
@@ -174,6 +176,8 @@ classdef RDPG_VT < handle
                 
                 sigma_ref_filtered_real = x_candidate_real;
                 obj.sigma_ref_prev_real = sigma_ref_filtered_real;
+
+                sigma_ref_new = sigma_ref_filtered_real;
                 
                 u_cmd = lambda_dot_real - obj.k * (sigma_p_real - sigma_ref_filtered_real);
                 raw_acc = V_p * u_cmd;

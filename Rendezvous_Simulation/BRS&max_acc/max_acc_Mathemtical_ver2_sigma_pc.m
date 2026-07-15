@@ -4,7 +4,7 @@ clear; clc; close all;
 V = 20.0;             % 속도 (m/s)
 k_gain = 3.0;         % 유도 이득
 g = 9.81;             % 중력 가속도
-acc_limit = 1 * g;    % 가속도 제한 (1g)
+acc_limit = 0.1 * g;    % 가속도 제한 (1g)
 psi_t = pi / 2;       % Target Heading (90도, +y 방향)
 
 % 기준 명령 각도 (Command Lead Angle) - 이 값들에 따라 6개 플롯 생성

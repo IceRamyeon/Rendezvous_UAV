@@ -4,7 +4,7 @@ clear; clc; close all;
 V = 20.0;             % 속도 (m/s)
 k_gain = 3.0;         % 유도 이득
 g = 9.81;             % 중력 가속도
-acc_limit = 1 * g;    % 가속도 제한 (1g)
+acc_limit = 0.5 * g;    % 가속도 제한 (1g)
 psi_t = pi / 2;       % Target Heading (90도, +y 방향)
 
 % 기준 명령 각도 (Command Lead Angle) - 0도, 20도, 40도로 변경
@@ -63,7 +63,7 @@ for i = 1:length(sigma_pc_deg_list)
     fill(target_x, target_y, 'k', 'EdgeColor', 'none');
     
     % 축 범위 및 라벨
-    xlim([-50, 1]); ylim([-25, 25]);
+    xlim([-100, 1]); ylim([-50, 50]);
     xlabel('x (m)'); ylabel('y (m)');
     
     % 텍스트 설명 추가
