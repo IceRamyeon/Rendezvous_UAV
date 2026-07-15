@@ -82,6 +82,21 @@ for i = 1:num_steps
     r_dot = V_t * cos(sigma_t) - V_p * cos(sigma_p);
     V_c = -r_dot;
     lambda_dot = (V_t * sin(sigma_t) - V_p * sin(sigma_p)) / r;
+
+    % RDPG_VT 에서 lambda_dot_vt 계산, 필요없을시 NaN 처리
+    if cfg.GUIDANCE_MODE == "RDPG_VT"
+        dx_vt = missile_guidance.r_vt * cos(missile_guidance.theta_vt_rad) - current_Xp;
+        dy_vt = missile_guidance.r_vt * sin(missile_guidance.theta_vt_rad) - current_Yp;
+        r_vt = sqrt(dx_vt^2 + dy_vt^2);
+        lambda_vt = atan2(dy_vt, dx_vt);
+        
+        sigma_p_vt = current_psi_p - lambda_vt;
+        sigma_t_vt = missile_guidance.theta_vt_rad - lambda_vt;
+        
+        lambda_dot_vt = (0 * sin(sigma_t_vt) - V_p * sin(sigma_p_vt)) / r_vt; 
+    else
+        lambda_dot_vt = NaN; 
+    end
     
     % -----------------------------------------------------------
     % [제어 명령 계산 분기][cite: 4]
@@ -101,9 +116,29 @@ for i = 1:num_steps
             [acc_cmd, sigma_ref_new] = missile_guidance.compute_commandRDPG(V_p, lambda_dot, sigma_p, r, sigma_t);
             mode_flag = -1;
         case 'RDPG_VT'
-            [acc_cmd, sigma_ref_new, mode_flag, x_vt_log, y_vt_log] = missile_guidance.compute_command(...
+                % 1. 가상 타겟(Virtual Target)의 전역 좌표 계산
+                    % CW가 +이므로 평면 좌표계 기준으로는 빼기(-) 적용
+                    gamma_vt = current_psi_t - cfg.theta_vt_rad; 
+                    X_vt = current_Xt + cfg.r_vt * cos(gamma_vt);
+                    Y_vt = current_Yt + cfg.r_vt * sin(gamma_vt);
+
+                    % 2. Pursuer와 가상 타겟 사이의 상대 기구학 계산
+                    Rx_vt = X_vt - current_Xp;
+                    Ry_vt = Y_vt - current_Yp;
+                    r_vt_dist = sqrt(Rx_vt^2 + Ry_vt^2);
+                    lambda_vt = atan2(Ry_vt, Rx_vt);
+
+                    % 3. 가상 타겟 기준 시선각 오차 (VT의 속도 벡터는 실제 Target과 동일하다고 가정)
+                    sigma_p_vt = current_psi_p - lambda_vt;
+                    sigma_t_vt = current_psi_t - lambda_vt;
+
+                    % 4. 가상 타겟 기준 시선각 변화율 (lambda_dot_vt) 계산
+                    lambda_dot_vt = (V_t * sin(sigma_t_vt) - V_p * sin(sigma_p_vt)) / r_vt_dist;
+
+            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(...
                 current_Xp, current_Yp, V_p, current_psi_p, ...
-                current_Xt, current_Yt, V_t, current_psi_t);
+                current_Xt, current_Yt, V_t, current_psi_t, ...
+                r_vt_dist, lambda_dot_vt, sigma_p_vt, sigma_t_vt);
         otherwise
             error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
     end

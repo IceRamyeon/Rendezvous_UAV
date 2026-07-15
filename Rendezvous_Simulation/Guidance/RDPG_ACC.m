@@ -83,7 +83,7 @@ classdef RDPG_ACC < handle
             end
 
             % -----------------------------------------------------------
-            % [6단계] 유도 명령 계산
+            % [4단계] 유도 명령 계산
             % -----------------------------------------------------------
             sigma_ref_filtered = x_candidate;
             obj.sigma_ref_prev = sigma_ref_filtered;

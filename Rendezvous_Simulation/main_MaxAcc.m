@@ -10,7 +10,7 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 공통 시나리오 및 기하학 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG_ACC'; % DPG, RDPG, RDPG_ACC, RDPG_VT
+cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC, RDPG_VT
 cfg.V_p = 20.0;        
 cfg.V_t = 20.0;
 cfg.At_constant = 0.0;     
@@ -67,8 +67,6 @@ if RDPG_FLAG
     cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
 else
     % 수동 설정 로직
-    sigma_p0_deg = sigma_p0_deg;
-    sigma_p0_rad = sigma_p0_rad;
     cfg.target_lead_angle_deg = sigma_p0_deg;
     cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
 end
