@@ -3,7 +3,7 @@ function Animate_Trajectory(cfg, sim_out)
     D2R = pi/180;
     arrow_scale = 7;
     
-    % 데이터 언패킹
+    % 데이터 언패킹[cite: 6]
     time = sim_out.time;
     hist_state = sim_out.hist_state;
     Xp_i = sim_out.init.Xp_i; Yp_i = sim_out.init.Yp_i;
@@ -16,7 +16,7 @@ function Animate_Trajectory(cfg, sim_out)
     
     V_p = sim_out.param.V_p; V_t = sim_out.param.V_t;
 
-    % cfg 파라미터에서 Region 계산용 변수 가져오기 (없으면 기본값 세팅)
+    % cfg 파라미터에서 Region 계산용 변수 가져오기 (없으면 기본값 세팅)[cite: 6]
     if isfield(cfg, 'limit_acc'), acc_limit = cfg.limit_acc; else acc_limit = 9.81; end
     if isfield(cfg, 'r_allow'), r_f_max = cfg.r_allow; else r_f_max = 2.0; end
     
@@ -29,7 +29,7 @@ function Animate_Trajectory(cfg, sim_out)
     sigma_t_deg_txt = (psi_t - lambda_init) * R2D;
 
     % =========================================================
-    % Figure 1: Global Inertial Frame (Initial)
+    % Figure 1: Global Inertial Frame (Initial)[cite: 6]
     % =========================================================
     figure(1); set(gcf, 'Position', [50 300 500 500], 'Theme', 'light');
     hold on; grid on; axis equal;
@@ -51,7 +51,7 @@ function Animate_Trajectory(cfg, sim_out)
     legend('LOS', 'Pursuer Vel', 'Target Vel', 'Location', 'best');
 
     % =========================================================
-    % Figure 2: Target Body Frame (Initial & Static Regions)
+    % Figure 2: Target Body Frame (Initial & Static Regions)[cite: 6]
     % =========================================================
     figure(2); set(gcf, 'Position', [560 300 500 500], 'Theme', 'light');
     hold on; grid on; axis equal; xlim([-r_i*1.8, r_i*0.2]); ylim([-r_i*0.1, r_i*1.9]);
@@ -63,22 +63,18 @@ function Animate_Trajectory(cfg, sim_out)
     P_body = R_mat * P_rel_vec;
     psi_p_body = psi_p + rot_angle;
 
-    % --- Plot_MaxAccPoint 영역 도출 방식 적용 ---
     epsilon = 1e-7;
     r_target_radius = 2.0;
     
-    % r_f_min 도출
     sigma_t_calc = linspace(0, pi, 50000);
     y_calc = (sin(sigma_t_calc) - sin(initial_sigma_p)) .* (1 + cos(sigma_t_calc + initial_sigma_p)) ./ (cos(initial_sigma_p)^2 + epsilon);
     [y_max, ~] = max(y_calc);
     r_f_min = (y_max * V_p^2) / (2 * acc_limit);
     
-    % 공통 궤적 변수
     sigma_t_traj_full = linspace(-initial_sigma_p, pi - initial_sigma_p - 1e-5, 500);
     r_min_traj_full = r_f_min * (cos(initial_sigma_p))^2 ./ cos((sigma_t_traj_full + initial_sigma_p)/2).^2;
     r_max_traj_full = r_f_max * (cos(initial_sigma_p))^2 ./ cos((sigma_t_traj_full + initial_sigma_p)/2).^2;
     
-    % 노란색 영역 (DPG Reachable Region)
     valid_idx_dpg = (r_max_traj_full >= r_target_radius);
     if any(valid_idx_dpg)
         plot_angle_dpg = -pi/2 - sigma_t_traj_full(valid_idx_dpg);
@@ -92,8 +88,7 @@ function Animate_Trajectory(cfg, sim_out)
         patch(X_dpg, Y_dpg, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3, 'DisplayName', 'DPG Reachable Region');
     end
 
-    % 초록색 영역 (Intersect Region)
-    valid_idx_int = (r_min_traj_full >= r_target_radius) & (r_max_traj_full <= 2000); % 발산 방지 캡 적용
+    valid_idx_int = (r_min_traj_full >= r_target_radius) & (r_max_traj_full <= 2000); 
     if r_f_min <= r_f_max && any(valid_idx_int)
         plot_angle_int = -pi/2 - sigma_t_traj_full(valid_idx_int);
         x_min = r_min_traj_full(valid_idx_int) .* cos(plot_angle_int);
@@ -116,7 +111,6 @@ function Animate_Trajectory(cfg, sim_out)
         y_g_init = r_glimit_init(valid_g_init) .* sin(plot_angle_g_init);
         plot(x_g_init, y_g_init, 'r', 'LineWidth', 1.5, 'DisplayName', '+g Limit');
     end
-    % ----------------------------------------
 
     plot([0 0], [0 r_i*1.1], 'k:', 'LineWidth', 0.5, 'HandleVisibility','off'); 
     plot([0 P_body(1)], [0 P_body(2)], 'Color', [0 0.5 0], 'LineStyle', '--', 'LineWidth', 1, 'HandleVisibility','off'); 
@@ -133,12 +127,32 @@ function Animate_Trajectory(cfg, sim_out)
     legend('Location', 'best');
 
     % =========================================================
-    % Figure 3, 4, 5: Animation Setup
+    % Figure 3, 4, 5: Animation Setup[cite: 6]
     % =========================================================
     fig3 = figure('Position', [50 50 450 450], 'Name', '3. Target Centered', 'Theme', 'light'); grid on; axis equal; hold on;
-    % Figure 3용 Region Patch & g Limit Line (초기엔 빈 데이터로 세팅)
+    % [추가] Figure 3용 Region Patch (초기엔 빈 데이터로 세팅)
     h_dpg_region_fig3 = patch(nan, nan, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
     h_int_region_fig3 = patch(nan, nan, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5);
+    
+    % ---------------------------------------------------------
+    % [추가] RDPG_VT 모드일 때 가상 타겟(Virtual Target) 고정 표시
+    % ---------------------------------------------------------
+    if isfield(cfg, 'GUIDANCE_MODE') && strcmp(cfg.GUIDANCE_MODE, 'RDPG_VT')
+        % Target Centered Frame에서는 Target이 항상 원점(0,0)에서 +y 방향을 바라봄.
+        % 따라서 Virtual Target의 위치는 좌표계 회전 없이 바로 계산 가능해.
+        vt_x_fig3 = cfg.r_vt * sin(cfg.theta_vt_rad);
+        vt_y_fig3 = cfg.r_vt * cos(cfg.theta_vt_rad);
+        
+        % 연보라색 별(p) 모양으로 흐릿하게(MarkerFaceAlpha) 표시
+        scatter(vt_x_fig3, vt_y_fig3, 200, 'p', ...
+            'MarkerFaceColor', [0.7 0.5 0.9], ...
+            'MarkerEdgeColor', 'none', ...
+            'MarkerFaceAlpha', 0.5);
+            
+        text(vt_x_fig3, vt_y_fig3 - r_i*0.05, 'VT', ...
+            'Color', [0.6 0.4 0.8], 'HorizontalAlignment', 'center', 'FontWeight', 'bold');
+    end
+    % ---------------------------------------------------------
     h_glimit_fig3 = plot(nan, nan, 'r', 'LineWidth', 1.5); % [추가] 실시간 +g Limit
     
     h_traj_relT = animatedline('Color', 'b', 'LineWidth', 1.5);
@@ -170,7 +184,7 @@ function Animate_Trajectory(cfg, sim_out)
     for i = 1:length(time)
         current_psi_p = hist_state(3, i);
         current_psi_t = hist_state(4, i);
-        current_sigma_p = hist_state(5, i); % 현재 Pursuer 리드각 가져오기
+        current_sigma_p = hist_state(5, i);
         
         if mod(i, cfg.skip_frame) == 0 || i == 1
             dx_global = current_Xp - current_Xt;
@@ -260,19 +274,16 @@ function [X_int, Y_int, X_dpg, Y_dpg, X_glimit, Y_glimit] = get_analytic_regions
     epsilon = 1e-7;
     r_target_radius = 2.0;
     
-    % r_f_min 도출
     sigma_t_calc = linspace(0, pi, 500);
     y_calc = (sin(sigma_t_calc) - sin(sigma_p_rad)) .* (1 + cos(sigma_t_calc + sigma_p_rad)) ./ (cos(sigma_p_rad)^2 + epsilon);
     y_max = max(y_calc);
     r_f_min = (y_max * V^2) / (2 * acc_limit);
     
-    % 궤적 계산용 각도 배열
     sigma_t_traj = linspace(-sigma_p_rad, pi - sigma_p_rad - 1e-5, 200);
     plot_angle_traj = -pi/2 - sigma_t_traj;
     
     r_max_traj = r_f_max * (cos(sigma_p_rad))^2 ./ cos((sigma_t_traj + sigma_p_rad)/2).^2;
     
-    % --- DPG Reachable Region (노란색 영역) ---
     valid_idx_dpg = (r_max_traj >= r_target_radius);
     if any(valid_idx_dpg)
         x_dpg_min = r_target_radius .* cos(plot_angle_traj(valid_idx_dpg));
@@ -286,10 +297,9 @@ function [X_int, Y_int, X_dpg, Y_dpg, X_glimit, Y_glimit] = get_analytic_regions
         X_dpg = []; Y_dpg = [];
     end
 
-    % --- Intersect Region (초록색 영역) ---
     if r_f_min <= r_f_max
         r_min_traj = r_f_min * (cos(sigma_p_rad))^2 ./ cos((sigma_t_traj + sigma_p_rad)/2).^2;
-        valid_idx_int = (r_min_traj >= r_target_radius) & (r_max_traj <= 2000); % 2000은 발산 방지용 캡
+        valid_idx_int = (r_min_traj >= r_target_radius) & (r_max_traj <= 2000); 
         
         if any(valid_idx_int)
             x_min = r_min_traj(valid_idx_int) .* cos(plot_angle_traj(valid_idx_int));

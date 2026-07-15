@@ -179,12 +179,12 @@ else
     zlabel(ax, sprintf('\\sigma_{pc} \\times %d', scale), 'FontSize', 12);
 end
 
-title(ax, ...
-    sprintf('3D Continuous Intersect Region (Scale = %d)', scale), ...
-    'FontSize', 15, 'FontWeight', 'bold');
+% title(ax, ...
+%     sprintf('3D Continuous Intersect Region (Scale = %d)', scale), ...
+%     'FontSize', 15, 'FontWeight', 'bold');
 
 cb = colorbar(ax);
-cb.Label.String = 'Original \sigma_{pc} (deg)';
+cb.Label.String = '\sigma_{p} (deg)';
 cb.Label.FontSize = 12;
 
 fprintf(' plot 완료\n');

@@ -10,10 +10,15 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 공통 시나리오 및 기하학 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC
+cfg.GUIDANCE_MODE = 'RDPG_ACC'; % DPG, RDPG, RDPG_ACC, RDPG_VT
 cfg.V_p = 20.0;        
 cfg.V_t = 20.0;
 cfg.At_constant = 0.0;     
+
+% RDPG_VT 관련 파라미터
+cfg.r_vt = 300.0;
+theta_vt_deg = -70.0;
+cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
@@ -21,7 +26,7 @@ cfg.tf = 45;
 cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
-cfg.auto_save = 1;         
+cfg.auto_save = 0;         
 
 % [제어 및 물리적 제한 가속도] 
 cfg.limit_acc = 1;         % 1G 제한 상태에서 클리핑 거동 확인!
