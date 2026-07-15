@@ -10,19 +10,19 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 공통 시나리오 및 기하학 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC, RDPG_VT
+cfg.GUIDANCE_MODE = 'RDPG_MIN'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN
 cfg.V_p = 20.0;        
 cfg.V_t = 20.0;
 cfg.At_constant = 0.0;     
 
 % RDPG_VT 관련 파라미터
-cfg.r_vt = 300.0;
-theta_vt_deg = -70.0;
+cfg.r_vt = 200.0;
+theta_vt_deg = -75.0;
 cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 45;               
+cfg.tf = 60;               
 cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
@@ -36,12 +36,12 @@ cfg.th_psi_deg = 5.0;
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치
-input_a = 400;             
-input_b = -70;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+input_a = 1000;             
+input_b = -10;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
 % Pursuer 초기 리드각
 RDPG_FLAG = 0;              % 초기부터 Reachability based lead angle 사용
-sigma_p0_deg = 40;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_deg = 80;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
