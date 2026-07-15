@@ -10,7 +10,7 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 공통 시나리오 및 기하학 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG_MIN'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN
+cfg.GUIDANCE_MODE = 'RDPG_ACC'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN
 cfg.V_p = 20.0;        
 cfg.V_t = 20.0;
 cfg.At_constant = 0.0;     
@@ -37,19 +37,19 @@ cfg.th_psi_deg = 5.0;
 % [초기 조건 입력] 
 % Pursuer 상대 위치
 input_a = 1000;             
-input_b = -10;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+input_b = -60;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
 
 % Pursuer 초기 리드각
 RDPG_FLAG = 0;              % 초기부터 Reachability based lead angle 사용
-sigma_p0_deg = 80;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_deg = 0;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
 cfg.r_from_region_m = input_a;
 cfg.bearing_from_region = input_b;
-cfg.Xt_input_km = 0.4;     
+cfg.Xt_input_km = 0.0;     
 cfg.Yt_input_km = 0.0;
-cfg.psi_ti_deg = 110;
+cfg.psi_ti_deg = 90;
 
 % 저장 경로 설정
 target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0709 랩미팅\Sim4.1_1\RDPG_40'; 

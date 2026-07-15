@@ -131,52 +131,6 @@ function Animate_Trajectory(cfg, sim_out)
     % =========================================================
     fig3 = figure('Position', [50 50 450 450], 'Name', '3. Target Centered', 'Theme', 'light'); grid on; axis equal; hold on;
     
-    % MaxAcc_Intersection Region (연한 회색 배경 미리 그리기)
-    base_gray = [0.5, 0.5, 0.5];
-    sigma_pc_deg_list = 0 : 0.1 : 90; % 애니메이션 속도를 위해 간격 0.5도로 조정
-    eps_val = 1e-7;
-    
-    for i_sigma = 1:length(sigma_pc_deg_list)
-        sigma_pc_rad = sigma_pc_deg_list(i_sigma) * D2R;
-        
-        if abs(cos(sigma_pc_rad)) < 1e-10
-            continue;
-        end
-        
-        sigma_t_calc = linspace(0, pi, 5000);
-        y_calc = (sin(sigma_t_calc) - sin(sigma_pc_rad)) .* (1 + cos(sigma_t_calc + sigma_pc_rad)) ./ (cos(sigma_pc_rad)^2 + eps_val);
-        y_max_value = max(y_calc);
-        r_f_min_acc = ((y_max_value * V_p^2) / (2 * acc_limit));
-        
-        if r_f_min_acc > r_f_max || r_f_min_acc < 0
-            continue;
-        end
-        
-        sigma_t_traj = linspace(-sigma_pc_rad, pi - sigma_pc_rad - 1e-5, 500);
-        denominator = cos((sigma_t_traj + sigma_pc_rad) / 2).^2;
-        r_min_traj = r_f_min_acc * cos(sigma_pc_rad)^2 ./ denominator;
-        r_max_traj = r_f_max * cos(sigma_pc_rad)^2 ./ denominator;
-        
-        % 발산하는 영역 최대치 고정[cite: 1]
-        r_max_traj = min(r_max_traj, 20000); 
-        
-        valid_idx_acc = isfinite(r_min_traj) & isfinite(r_max_traj) & (r_min_traj >= r_target_radius) & (r_max_traj >= r_min_traj);
-        
-        if any(valid_idx_acc)
-            plot_angle = -pi/2 - sigma_t_traj(valid_idx_acc);
-            x_min = r_min_traj(valid_idx_acc) .* cos(plot_angle);
-            y_min = r_min_traj(valid_idx_acc) .* sin(plot_angle);
-            x_max = r_max_traj(valid_idx_acc) .* cos(plot_angle);
-            y_max = r_max_traj(valid_idx_acc) .* sin(plot_angle);
-            
-            x_polygon = [x_min, fliplr(x_max)];
-            y_polygon = [y_min, fliplr(y_max)];
-            
-            fill(x_polygon, y_polygon, base_gray, 'EdgeColor', 'none', 'HandleVisibility', 'off');
-        end
-    end
-    % ---------------------------------------------------------
-    
     % [추가] Figure 3용 Region Patch (초기엔 빈 데이터로 세팅)
     h_dpg_region_fig3 = patch(nan, nan, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
     h_int_region_fig3 = patch(nan, nan, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5);
@@ -308,6 +262,15 @@ function Animate_Trajectory(cfg, sim_out)
     if cfg.auto_save == 1
         close(vidObj3); close(vidObj4); close(vidObj5);
     end
+    
+    % Animation 종료 후 Figure 3에 Intersect Region 덧그리기
+    ax3 = get(fig3, 'CurrentAxes');
+    draw_Accumulated_IntersectRegion(ax3, V_p, acc_limit, r_f_max);
+    
+    % 덧그린 영역이 애니메이션의 메인 궤적을 가리지 않도록 객체를 맨 뒤로 배치
+    patch_objs = findobj(ax3, 'Type', 'Patch');
+    uistack(patch_objs, 'bottom');
+    % =========================================================
 end
 
 %% --- 헬퍼 함수들 ---
