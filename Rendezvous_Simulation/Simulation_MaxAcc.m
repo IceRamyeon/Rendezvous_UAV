@@ -45,10 +45,9 @@ switch cfg.GUIDANCE_MODE
         % RDPG 객체 생성
         init_sigma = current_psi_p - lambda_init;
         rate_limit_rad = 15 * (pi/180); 
-        alpha_val = 1.0;
         test_mode_flag = 0;
         missile_guidance = RDPG(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
-                                rate_limit_rad, dt, init_sigma, alpha_val, test_mode_flag);
+                                rate_limit_rad, dt, init_sigma, test_mode_flag);
                                 
     case 'RDPG_VT'
         % [추가된 부분] RDPG_VT 객체 생성
@@ -57,12 +56,11 @@ switch cfg.GUIDANCE_MODE
         
         % 가상 타겟 전용 유도 파라미터 (필요하면 main에서 cfg로 넘기도록 빼도 돼)
         rate_limit_rad_vt = 15 * (pi/180);
-        alpha_val_vt = 1.0;
         test_mode_flag_vt = 0;
         
         missile_guidance = RDPG_VT(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
                                    dt, init_sigma_real, ...
-                                   cfg.r_allow, rate_limit_rad_vt, alpha_val_vt, test_mode_flag_vt, init_sigma_vt, ...
+                                   cfg.r_allow, rate_limit_rad_vt, test_mode_flag_vt, init_sigma_vt, ...
                                    cfg.r_vt, cfg.theta_vt_rad);
         
     otherwise

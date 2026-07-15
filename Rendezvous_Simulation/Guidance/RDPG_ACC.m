@@ -20,12 +20,12 @@ classdef RDPG_ACC < handle
             % =======================================================
             eps_max = 0.01;
             eps_min = 1e-7;
-            r_fade_start = 200.0; % 거품 빼기 시작할 거리 (시뮬레이션 보며 조절)
-            r_fade_end = 100.0;    % 거품 완전히 제거할 거리 (시뮬레이션 보며 조절)
+            r_fade_start = 200.0; % epsilon 최대 거리 (시뮬레이션 보며 조절)
+            r_fade_end = 100.0;    % epsilon 최소 거리 (시뮬레이션 보며 조절)
             if r >= r_fade_start
                 dynamic_eps = eps_max;
             elseif r > r_fade_end
-                % 15m ~ 2m 사이에서는 선형적으로 부드럽게 감소
+                % r_start ~ r_end 사이에서는 선형적으로 부드럽게 감소
                 alpha = (r - r_fade_end) / (r_fade_start - r_fade_end);
                 dynamic_eps = eps_min + alpha * (eps_max - eps_min);
             else
