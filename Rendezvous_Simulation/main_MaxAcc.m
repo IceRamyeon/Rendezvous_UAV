@@ -39,6 +39,7 @@ cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
 cfg.tf = 30;               
+cfg.tf = 30;               
 cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    

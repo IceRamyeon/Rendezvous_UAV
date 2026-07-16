@@ -101,7 +101,7 @@ function Animate_Trajectory(cfg, sim_out)
         fill(X_fill, Y_fill, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'DisplayName', 'Intersect Region');
     end
     
-    % --- [추가] 초기 +g Limit 영역 그리기 ---
+    % +g Limit 영역
     sigma_t_g_init = linspace(0, pi, 300);
     r_glimit_init = (V_p^2 / acc_limit) * (sin(sigma_t_g_init) - sin(initial_sigma_p));
     valid_g_init = r_glimit_init > 0;
@@ -135,12 +135,9 @@ function Animate_Trajectory(cfg, sim_out)
     h_dpg_region_fig3 = patch(nan, nan, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
     h_int_region_fig3 = patch(nan, nan, [0 0.8 0], 'EdgeColor', 'none', 'FaceAlpha', 0.5);
     
-    % ---------------------------------------------------------
-    % [추가] RDPG_VT 모드일 때 가상 타겟(Virtual Target) 고정 표시
-    % ---------------------------------------------------------
+    % RDPG_VT 모드일 때 가상 타겟(Virtual Target) 고정 표시
     if isfield(cfg, 'GUIDANCE_MODE') && strcmp(cfg.GUIDANCE_MODE, 'RDPG_VT')
         % Target Centered Frame에서는 Target이 항상 원점(0,0)에서 +y 방향을 바라봄.
-        % 따라서 Virtual Target의 위치는 좌표계 회전 없이 바로 계산 가능해.
         vt_x_fig3 = cfg.r_vt * sin(cfg.theta_vt_rad);
         vt_y_fig3 = cfg.r_vt * cos(cfg.theta_vt_rad);
         
@@ -153,11 +150,9 @@ function Animate_Trajectory(cfg, sim_out)
         text(vt_x_fig3, vt_y_fig3 - r_i*0.05, 'VT', ...
             'Color', [0.6 0.4 0.8], 'HorizontalAlignment', 'center', 'FontWeight', 'bold');
     end
-    % Reachable Region 회색으로 표시
 
-
-    % ---------------------------------------------------------
-    h_glimit_fig3 = plot(nan, nan, 'r', 'LineWidth', 1.5); % [추가] 실시간 +g Limit
+    % +g limit 표시
+    h_glimit_fig3 = plot(nan, nan, 'r', 'LineWidth', 1.5);
     
     h_traj_relT = animatedline('Color', 'b', 'LineWidth', 1.5);
     h_arrow_T_fixed = patch('Vertices', nan(4,2), 'Faces', [1 2 3 4], 'FaceColor', 'r'); 
