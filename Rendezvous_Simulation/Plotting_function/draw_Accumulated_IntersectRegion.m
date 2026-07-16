@@ -8,7 +8,7 @@ function draw_Accumulated_IntersectRegion(ax, V, acc_limit, r_f_max)
     epsilon = 1e-7;
     
     sigma_pc_deg_list = 0 : 0.05 : 90;
-    dark_green = [0.6, 0.6, 0.6];
+    dark_green = [0.8, 0.9, 0.88];
     
     for i_sigma = 1:length(sigma_pc_deg_list)
         sigma_pc_deg = sigma_pc_deg_list(i_sigma);
@@ -21,7 +21,7 @@ function draw_Accumulated_IntersectRegion(ax, V, acc_limit, r_f_max)
         sigma_t_calc = linspace(0, pi, 50000);
         y_calc = (sin(sigma_t_calc) - sin(sigma_pc_rad)) .* (1 + cos(sigma_t_calc + sigma_pc_rad)) ./ (cos(sigma_pc_rad)^2 + epsilon);
         y_max_value = max(y_calc);
-        r_f_min = ((y_max_value * V^2) / (2 * acc_limit));
+        r_f_min = ((y_max_value * V^2) / (2 * acc_limit*9.81));
         
         if r_f_min > r_f_max || r_f_min < 0
             continue;
@@ -68,7 +68,7 @@ function draw_Accumulated_IntersectRegion(ax, V, acc_limit, r_f_max)
             end
             
             % 다각형(Polygon)을 덧그리기 (투명도 0.1 적용)[cite: 2]
-            fill(ax, x_polygon, y_polygon, dark_green, 'EdgeColor', 'none', 'FaceAlpha', 0.1);
+            fill(ax, x_polygon, y_polygon, dark_green, 'EdgeColor', 'none', 'FaceAlpha', 0.05);
         end
     end
 end
