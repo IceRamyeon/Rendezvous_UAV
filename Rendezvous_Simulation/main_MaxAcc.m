@@ -9,11 +9,27 @@ addpath('./Rendezvous_Simulation/Initial_Conditions')
 addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
-%% 1. 공통 시나리오 및 기하학 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG_ACC'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN
-cfg.V_p = 20.0;        
-cfg.V_t = 20.0;
-cfg.At_constant = 0.0;     
+%% 1. 초기조건 및 시뮬레이션 파라미터 설정
+cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
+
+% [초기 조건 입력] 
+% Pursuer 상대 위치 및 리드각
+r_pursuer = 200;             
+theta_pursuer = -60;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+RDPG_FLAG = 0;              % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
+sigma_p0_deg = 0;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_rad = deg2rad(sigma_p0_deg);
+
+% Target 초기 위치 및 자세
+cfg.r_from_region_m = r_pursuer;
+cfg.bearing_from_region = theta_pursuer;
+cfg.Xt_input_km = 0.2;     
+cfg.Yt_input_km = 0.0;
+cfg.psi_ti_deg = 120;
+
+% 저장 경로 설정
+target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.2\RDPG_0'; 
+cfg.save_dir = fullfile(target_path);
 
 % RDPG_VT 관련 파라미터
 cfg.r_vt = 200.0;
@@ -22,38 +38,20 @@ cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 60;               
+cfg.tf = 30;               
 cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
-cfg.auto_save = 0;         
+cfg.auto_save = 1;         
 
 % [제어 및 물리적 제한 가속도] 
 cfg.limit_acc = 1;         % 1G 제한 상태에서 클리핑 거동 확인!
 cfg.gain_k = 5.0; 
 cfg.r_allow = 2.0;         
 cfg.th_psi_deg = 5.0;      
-
-% [초기 조건 입력] 
-% Pursuer 상대 위치
-input_a = 1000;             
-input_b = -60;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
-
-% Pursuer 초기 리드각
-RDPG_FLAG = 0;              % 초기부터 Reachability based lead angle 사용
-sigma_p0_deg = 0;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
-sigma_p0_rad = deg2rad(sigma_p0_deg);
-
-% Target 초기 위치 및 자세
-cfg.r_from_region_m = input_a;
-cfg.bearing_from_region = input_b;
-cfg.Xt_input_km = 0.0;     
-cfg.Yt_input_km = 0.0;
-cfg.psi_ti_deg = 90;
-
-% 저장 경로 설정
-target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0709 랩미팅\Sim4.1_1\RDPG_40'; 
-cfg.save_dir = fullfile(target_path);
+cfg.V_p = 20.0;        
+cfg.V_t = 20.0;
+cfg.At_constant = 0.0;  
 
 % 데이터 로그 파일 이름
 my_filename = sprintf('Scenario_SigmaP0_%d', sigma_p0_deg);
@@ -62,13 +60,13 @@ my_filename = sprintf('Scenario_SigmaP0_%d', sigma_p0_deg);
 
 if RDPG_FLAG
     % 자동 계산 로직
-    [sigma_p0_deg, sigma_p0_rad] = RDPG_LeadAngle(input_a, input_b, cfg.r_allow);
+    [sigma_p0_deg, sigma_p0_rad] = RDPG_LeadAngle(r_pursuer, theta_pursuer, cfg.r_allow);
     cfg.target_lead_angle_deg = sigma_p0_deg;
-    cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
+    cfg.psi_p_from_region = sigma_p0_deg - theta_pursuer - 90;
 else
     % 수동 설정 로직
     cfg.target_lead_angle_deg = sigma_p0_deg;
-    cfg.psi_p_from_region = sigma_p0_deg - input_b - 90;
+    cfg.psi_p_from_region = sigma_p0_deg - theta_pursuer - 90;
 end
 %% 3. [Theorem 1] 수식 직접 계산 기법 (Helper 함수 호출)
 theory = Max_Point(sigma_p0_rad, cfg.r_allow, cfg.V_p);
