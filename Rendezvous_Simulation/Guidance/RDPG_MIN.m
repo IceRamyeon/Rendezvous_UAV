@@ -2,14 +2,14 @@ classdef RDPG_MIN < handle
     properties
         k, max_acc, r_f_max, dt
         sigma_ref_prev 
-        a_min % [수정] 클래스 속성에 a_min 추가
+        a_min % Fail-Safe 탈출을 위한 가속도
     end
     
     methods
         function obj = RDPG_MIN(k_gain, limit_G, min_G, r_f_max, dt, init_sigma_rad)
             obj.k = k_gain;
             obj.max_acc = limit_G * 9.81;
-            obj.min_acc = min_G * 9.81; % [주의] 루트 계산을 위해 양수 유지
+            obj.a_min = min_G * 9.81;
             obj.r_f_max = r_f_max; 
             obj.dt = dt;
             obj.sigma_ref_prev = init_sigma_rad;
@@ -62,7 +62,6 @@ classdef RDPG_MIN < handle
                 eqn = @(x) sqrt(r/obj.r_f_max) * cos((sigma_t + x)/2) - cos(x);
                 
                 try
-                    
                     sigma_pc = fzero(eqn, obj.sigma_ref_prev);
                     
                     % sigma_pc을 바탕으로 f(sigma_pc;sigma_t) = C 의 최댓값(C_max)을 계산
