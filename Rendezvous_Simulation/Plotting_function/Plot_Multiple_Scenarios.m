@@ -5,28 +5,25 @@ clc; clear; close all;
 % 1. 플롯할 파일 이름 배열 설정 (여기에 파일명 추가/삭제)
 % -----------------------------------------------------------
 file_list = {
-    '0.mat', ...
-    '20.mat', ...
-    '40.mat'
+    'MIN_-30.mat', ...
+    'MIN_0.mat', ...
+    'MIN_30.mat'
 };
 
 % RDPG 비교군 파일 리스트 (비워두면 file_list만 단독으로 플롯함)
 file_list_comparison = {
-    'R_0.mat', ...
-    'R_20.mat', ...
-    'R_40.mat'
 };
 
 % --- (추가됨) 사용자가 직접 입력하는 범례 이름 설정 ---
 % 파일 리스트 개수와 반드시 일치해야 해, 선생!
-custom_names_prop = {'UAV4 (\sigma_p=0\circ)', 'UAV5 (\sigma_p=20\circ)', 'UAV6 (\sigma_p=40\circ)'};
-custom_names_comp = {'UAV1 (\sigma_p=0\circ)', 'UAV2 (\sigma_p=20\circ)', 'UAV3 (\sigma_p=40\circ)'};
+custom_names_prop = {'UAV1 (\sigma_p=-30\circ)', 'UAV2 (\sigma_p=0\circ)', 'UAV3 (\sigma_p=30\circ)'};
+custom_names_comp = {'UAV1 (\sigma_p=40\circ)', 'UAV2 (\sigma_p=60\circ)', 'UAV3 (\sigma_p=80\circ)'};
 % -----------------------------------------------------------
 
 % 파일이 저장된 폴더 경로
-data_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0709 랩미팅\Sim4.1_1';
+data_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.4';
 % 자동으로 PNG를 저장할 폴더 경로
-save_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0709 랩미팅\Sim4.1_1';
+save_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.4\Multiple_plots}';
 
 % -----------------------------------------------------------
 % 2. 플롯 및 색상/마커 초기화
