@@ -18,7 +18,10 @@ classdef RDPG_ACC < handle
             % =======================================================
             % Dynamic Epsilon 스케줄링 로직
             % =======================================================
-            eps_max = 0.01;
+            % epsilon이 매우 작을 경우, sigma_p0가 90도에 가까우면 수치적으로 불안정하여 sigma_pc 계산 실패할 가능성 있음
+            % epsilon이 클 경우, 랑데부 궤적이 max_acc를 초과하는 정도가 커짐
+            % 따라서 epsilon을 거리에 따라 조절
+            eps_max = 0.001;
             eps_min = 1e-7;
             r_fade_start = 200.0; % epsilon 최대 거리 (시뮬레이션 보며 조절)
             r_fade_end = 100.0;    % epsilon 최소 거리 (시뮬레이션 보며 조절)
@@ -92,7 +95,7 @@ classdef RDPG_ACC < handle
             end
 
             % -----------------------------------------------------------
-            % [4단계] 유도 명령 계산
+            % [5단계] 유도 명령 계산
             % -----------------------------------------------------------
             sigma_ref_filtered = sigma_pc;
             obj.sigma_ref_prev = sigma_ref_filtered;

@@ -1,142 +1,131 @@
-%% main.m
-close all; 
-clc; 
-clear;
+%% main_MaxAcc.m
+close all; clc; clear;
 
+% [중요] 경로 설정에 새로 정의한 Helper_Function 디렉토리를 추가했어!
 addpath('./Rendezvous_Simulation/Guidance')
 addpath('./Rendezvous_Simulation/Initial_Conditions')
 addpath('./Rendezvous_Simulation/Plotting_function')
-addpath('./Rendezvous_Simulation/BRS&max_acc')
+addpath('./Rendezvous_Simulation/Helper_Function')
 
-%% 0. 시나리오 입력 설정 
-% [모드 선택]
-% 'REG' : 도달 가능 영역 분석 (CSV 저장)
-% 'SIM' : 1:1 궤적 시뮬레이션
-RUN_MODE = 'SIM';
+%% 1. 초기조건 및 시뮬레이션 파라미터 설정
+% RDPG : Reachability-based rendezvous guidance(2022)
+% RDPG_ACC : RDPG + Acceleration Limits(Fail-Safe : DPG)
+% RDPG_VT : RDPG + Acceleration Limits(Fail-Safe : Virtual Target)
+% RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use a_min)
+cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
 
-% [초기 위치 입력 설정] (SIM 모드에서만 사용)
-input_type = 0;             % 0: 극좌표계 (a = 거리, b = 베어링각) / 1: 직교좌표계 (a = X, b = Y)
-input_a = 800;             % input_type 0일 땐 거리[m], 1일 땐 X[m]
-input_b = -30;              % input_type 0일 땐 베어링[deg], 1일 땐 Y[m]
+% [초기 조건 입력] 
+% Pursuer 상대 위치 및 리드각
+r_pursuer = 1000;               % Target 기준 Pursuer의 초기 상대거리 [m]
+theta_pursuer = -5;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
+RDPG_FLAG = 0;                  % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
+sigma_p0_deg = 80;              % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_rad = deg2rad(sigma_p0_deg);
 
-% [초기 리드각 설정]
-% 직접 입력하려면 숫자를 넣고 (예: 60), 자동으로 RDPG 해를 찾게 하려면 빈 대괄호 [] 로 둬.
-sigma_p0_deg = 0;          
+% Target 초기 위치 및 자세
+cfg.Xt_input_km = 0.0;      % Inertial Frame Target의 x좌표[km]
+cfg.Yt_input_km = 0.0;      % Inertial Frame Target의 y좌표[km]
+cfg.psi_ti_deg = 90;        % Inertial Frame Target Heading Angle[deg]
 
-%% 1. 공통 파라미터 설정
-% [유도 법칙 설정]
-GUIDANCE_Switch = 4;    % 1 = PPNG, 2 = DPG, 3 = VDPG, 4 = RDPG, 5 = RDPG_T, 6 = RDPG_SAFE
-switch GUIDANCE_Switch
-    case 1, GUIDANCE_MODE = 'PPNG';
-    case 2, GUIDANCE_MODE = 'DPG';
-    case 3, GUIDANCE_MODE = 'VDPG';
-    case 4, GUIDANCE_MODE = 'RDPG';
-    case 5, GUIDANCE_MODE = 'RDPG_T';
-    case 6, GUIDANCE_MODE = 'RDPG_SAFE';
+% 시뮬레이션 결과 저장
+cfg.auto_save = 0;          % Simulation 결과 자동저장 (1 : 자동 저장, 0 : 저장 안 함)
+target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.4\RDPG_MIN_-30'; % 저장 경로
+cfg.save_dir = fullfile(target_path);
+my_filename = sprintf('Scenario_SigmaP0_%d', sigma_p0_deg); % 최종 results들을 담은 파일 이름
+
+% RDPG_VT 관련 파라미터
+cfg.r_vt = 100.0;                           % Virtual Target의 거리[m]
+theta_vt_deg = -75.0;                       % Virtual Target의 bearing angle[deg]
+cfg.theta_vt_rad = deg2rad(theta_vt_deg);
+
+% RDPG_MIN 관련 파라미터
+cfg.min_acc = 0.1; % 회선시 가속도 제한
+
+% 시뮬레이션 및 애니메이션 타임 파라미터
+cfg.dt_simul = 0.01;                    % Time step
+cfg.tf = 60;                            % Total Simulation Time[s]
+cfg.pause_t = 0.1;                      % 초기 Simulation이 로딩으로 인해 Jump하는 것을 막기 위한 시뮬레이션 지연
+cfg.skip_frame = 50;                    % Simulation이 무거워지는 것을 막기 위해 Frame을 스킵함
+cfg.stop_condition = 0;                 % 일정 조건을 만족할 경우 자동으로 Stop.(0: off, 1 : on)
+
+% [제어 및 물리적 제한 가속도] 
+cfg.limit_acc = 1;          % Max Acceleration [G]
+cfg.gain_k = 5.0;           % DPG Gain Factor
+cfg.r_allow = 2.0;          % r_f, 랑데부 성공에 판별할 거리 조건
+cfg.th_psi_deg = 5.0;       % 랑데부 성공에 판별할 각도 조건
+cfg.V_p = 20.0;             % Pursuer Velocity
+cfg.V_t = 20.0;             % Target Velocity
+cfg.At_constant = 0.0;      % Maneuvering Target constant turn(Reachability-Based rendezvousguidance(2022) etcetera simulation)
+
+%% 2. Reachable한 초기 리드각 (sigma_p0) 역산 (Helper 함수 호출)
+
+if RDPG_FLAG
+    % 자동 계산 로직
+    [sigma_p0_deg, sigma_p0_rad] = RDPG_LeadAngle(r_pursuer, theta_pursuer, cfg.r_allow);
+    cfg.target_lead_angle_deg = sigma_p0_deg;
+    cfg.psi_p_from_region = sigma_p0_deg - theta_pursuer - 90;
+else
+    % 수동 설정 로직
+    cfg.target_lead_angle_deg = sigma_p0_deg;
+    cfg.psi_p_from_region = sigma_p0_deg - theta_pursuer - 90;
 end
-cfg.GUIDANCE_MODE = GUIDANCE_MODE;
-cfg.V_p = 20.0;                 % [m/s] Pursuer 속도
-cfg.V_t = 20.0;                 % [m/s] Target 속도
-target_turn_rate_deg = 0.0;     % [deg/s] 탱커의 기본 회전율
-cfg.At_constant = cfg.V_t * deg2rad(target_turn_rate_deg);
+%% 3. [Theorem 1] 수식 직접 계산 기법 (Helper 함수 호출)
+theory = Max_Point(sigma_p0_rad, cfg.r_allow, cfg.V_p);
 
-% [시뮬레이션 시간 설정]
-cfg.dt_region = 0.01;           % Time Step for region sweep
-cfg.dt_simul = 0.01;            % Time Step for Simulation
-cfg.tf = 60;                    % Final Time
-cfg.pause_t = 1;              % Pause Time
-cfg.skip_frame = 50;            % Animation 속도 조절
+fprintf('======================================================\n');
+fprintf('    [Max Acc 지점 예측]    \n');
+fprintf('======================================================\n');
+fprintf('1. 고정 리드각 (sigma_p0)     : %.4f deg\n', sigma_p0_deg);
+fprintf('2. 예측된 임계 타겟각 (sigma_t*): %.4f deg\n', theory.sigma_t_star_deg);
+fprintf('3. 예측된 임계 거리 (r*)       : %.4f m\n', theory.r_star);
+fprintf('4. 예측된 최대 요구가속도 (a*) : %.4f m/s^2\n', theory.a_star);
+fprintf('======================================================\n');
 
-% Stop Condition / auto save 사용여부
-cfg.stop_condition = 0;         % 0 = off, 1 = on, 단 RDPG_T는 무조건 on
-cfg.auto_save = 0;
+%% 4. 검증 시뮬레이션 실행 및 결과 회수
+[sim_results, sim_out] = Simulation_MaxAcc(cfg, theory);
 
-% 저장 경로 설정 (노트북 환경에 맞게 수정)
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260402 랩미팅 준비'; 
-cfg.save_dir = fullfile(target_path, 'bearing = 64도,RDPG');
+%% 5. 대화창(Command Window) 최종 수치 매칭 결과 출력
+fprintf('\n======================================================\n');
+fprintf('    [Theorem 1 검증 : 수식 예측값 vs 시뮬레이션 실측값]    \n');
+fprintf('======================================================\n');
+fprintf(' [1] 최대 요구 가속도 크기 (Maximum Acceleration)\n');
+fprintf('  - 예측값 (Predicted) : %.4f m/s^2  (%.2f G)\n', theory.a_star, theory.a_star / 9.81);
+fprintf('  - 실측값 (Simulated) : %.4f m/s^2  (%.2f G)\n', sim_results.a_sim_at_max, sim_results.a_sim_at_max / 9.81);
+fprintf('  - 절대오차 (Abs Error): %.6f m/s^2\n', abs(theory.a_star - sim_results.a_sim_at_max));
+fprintf('------------------------------------------------------\n');
+fprintf(' [2] 임계 상대 거리 지점 (Critical Distance r*)\n');
+fprintf('  - 예측값 (Predicted) : %.4f m\n', theory.r_star);
+fprintf('  - 실측값 (Simulated) : %.4f m\n', sim_results.r_sim_at_max);
+fprintf('  - 절대오차 (Abs Error): %.6f m\n', abs(theory.r_star - sim_results.r_sim_at_max));
+fprintf('------------------------------------------------------\n');
+fprintf(' [3] 임계 타겟 리드각 지점 (Critical Target Lead Angle \\sigma_t*)\n');
+fprintf('  - 예측값 (Predicted) : %.4f deg\n', theory.sigma_t_star_deg);
+fprintf('  - 실측값 (Simulated) : %.4f deg\n', sim_results.sigma_t_sim_at_max);
+fprintf('  - 절대오차 (Abs Error): %.6f deg\n', abs(theory.sigma_t_star_deg - sim_results.sigma_t_sim_at_max));
 
-%% 2. 유도 법칙별 파라미터 통합 설정
-cfg.limit_acc = 1;              % [G] 가속도 제한
-cfg.N = 3.0;                    % Navigation Constant (PPNG)
-cfg.bias_acc = -0.0;            % Bias Acceleration
-cfg.gain_k = 5.0;               % 유도 게인 K (DPG, VDPG, RDPG 공용)
+%% 6. [랑데부 완료] 최종 상태 출력
+% sim_out.hist_state의 마지막 열(end)이 최종 상태를 의미해
+r_i = sim_out.init.r_i;
+bearing_i = sim_out.init.bearing_deg;
+Xp_i = sim_out.init.Xp_i;
+Yp_i = sim_out.init.Yp_i;
 
-% [Success Criteria + RDPG, RDPG_T 파라미터]
-cfg.r_allow = 2;                % [m] 허용 거리
-cfg.r_theory_m = cfg.r_allow;
-cfg.th_psi_deg = 5.0;           % [deg] 성공 헤딩 오차
-cfg.th_lead_deg = 5.0;          % [deg] 성공 lead angle 오차
-rate_limit_degree = 15;         % 최대 시선각 변화율
-cfg.rate_limit = deg2rad(rate_limit_degree);
-cfg.alpha = 1;                  % LPF 계수
+r_f = sim_out.hist_state(1, end);
+sigma_p_f_deg = sim_out.hist_state(5, end) * (180/pi); % rad to deg
+psi_p_f_deg = sim_out.hist_state(3, end) * (180/pi);   % rad to deg
 
-% RDPG_T 파라미터
-target_turn_rate_cmd_deg = 0.4;
-cfg.At_cmd = cfg.V_t * deg2rad(target_turn_rate_cmd_deg);
-cfg.RDPG_T_MODE = 1;            % 0 = lead angle, 1 = relative distance
-cfg.sigma_offset = 9;           % lead angle 모드일 때 offset
-cfg.RDPG_test = 1;              % test mode on = 1, off = 0
+fprintf('======================================================\n');
+fprintf('  [랑데부 완료]    \n');
+fprintf('======================================================\n');
+fprintf('1. Pursuer 초기 상대위치      : (%.1f m, %.1f deg)\n', r_i, bearing_i); 
+fprintf('2. Pursuer 초기 Inertial 위치 : (%.1f m, %.1f m)\n', Xp_i, Yp_i); 
+fprintf('------------------------------------------------------\n');
+fprintf('3. 최종 랑데부 거리 (r_f)       : %.4f m\n', r_f);
+fprintf('4. 최종 랑데부 리드각 (sigma_p) : %.4f deg\n', sigma_p_f_deg);
+fprintf('5. 최종 랑데부 헤딩각 (psi_p)   : %.4f deg\n', psi_p_f_deg);
+fprintf('======================================================\n');
 
-%% 3. 모드별 추가 설정 및 실행
-switch RUN_MODE
-    case 'REG'
-        % --- Region 모드 전용 설정 ---
-        cfg.r_min_km = 0.001; cfg.r_max_km = 0.001; cfg.r_step_km = 0.1;
-        cfg.b_min_deg = -0; cfg.b_max_deg = -0; cfg.b_step_deg = 0.0;
-        cfg.sigma_cases_deg = [0, 15, 30, 45, 60, 75];
-
-        fprintf('>>> [Reachability Region : "%s"]\n', cfg.GUIDANCE_MODE);
-        Randezvous_Region(cfg);
-        
-    case 'SIM'
-        % [Target 초기 위치 (Global)]
-        cfg.Xt_input_km = 0.2;       % [Km] 타겟 Global X
-        cfg.Yt_input_km = 0.0;       % [Km] 타겟 Global Y
-        cfg.psi_ti_deg = 90;         % [deg] 타겟 초기 헤딩
-
-        % [Pursuer 초기 상대 위치 계산]
-        if input_type == 0
-            cfg.r_from_region_m = input_a;          % [m] 초기 거리
-            cfg.bearing_from_region = input_b;      % [deg] 초기 베어링 (Target 기준)
-        elseif input_type == 1
-            r = sqrt(input_a^2 + input_b^2);
-            theta_raw = atan(input_b/input_a);
-            theta_deg = -rad2deg(pi/2 + theta_raw);
-            cfg.r_from_region_m = r;
-            cfg.bearing_from_region = theta_deg;
-        else
-            error('으헤... input_type은 0 아니면 1이어야 해!');
-        end
-
-        % [초기 리드각(sigma_p0) 설정 및 계산]
-        if isempty(sigma_p0_deg)
-            % DPG_lead 입력이 없을 때: RDPG 초기화 로직(fzero) 수행
-            bearing_rad = cfg.bearing_from_region * pi / 180;
-            sigma_t_init_rad = bearing_rad - pi; 
-            sigma_t_init_rad = atan2(sin(sigma_t_init_rad), cos(sigma_t_init_rad));
-            
-            eqn = @(x) sqrt(cfg.r_from_region_m / cfg.r_allow) * cos((sigma_t_init_rad + x)/2) - cos(x);
-            
-            try
-                init_try_rad = 100 * pi / 180; 
-                lead_p_init_rad = fzero(eqn, init_try_rad); 
-                lead_p_init = lead_p_init_rad * 180 / pi; 
-            catch
-                disp('으헤... 초기 sigma_ref 해를 찾지 못했어. 일단 0으로 둘게.');
-                lead_p_init = 0; 
-            end   
-        else
-            % 입력된 값이 있을 때 그대로 사용
-            lead_p_init = sigma_p0_deg;
-        end
-        
-        % 초기 헤딩 각도 최종 적용
-        cfg.psi_p_from_region = lead_p_init - cfg.bearing_from_region - 90;
-
-        fprintf('>>> [rate_limit: %.1f]\n', cfg.rate_limit);
-        fprintf('>>> [Simulation 모드: r=%.1f, b=%.1f, 초기 리드각=%.1f]\n', cfg.r_from_region_m, cfg.bearing_from_region, lead_p_init);
-        Randezvous_Simulation(cfg);
-        
-    otherwise
-        error('모드 없음.');
+% 패키징 및 저장 함수 호출
+if cfg.auto_save
+    Save_Log_Data(cfg.save_dir, my_filename, sim_out);
 end
