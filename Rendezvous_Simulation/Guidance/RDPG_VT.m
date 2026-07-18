@@ -1,38 +1,37 @@
 classdef RDPG_VT < handle
     properties
-        % 공통/실제 타겟용 파라미터[cite: 1]
+        % 공통/실제 타겟용 파라미터
         k, max_acc, r_f_max, dt
         sigma_ref_prev_real 
         
-        % 가상 타겟(Virtual Target)용 파라미터[cite: 1]
-        r_allow_vt, rate_limit_vt
+        % 가상 타겟(Virtual Target)용 파라미터
+        r_allow_vt
         test_mode_vt
         sigma_ref_prev_vt
         
-        % 가상 타겟 설정 위치[cite: 1]
+        % 가상 타겟 설정 위치
         r_vt 
         theta_vt_rad 
     end
     
     methods
         function obj = RDPG_VT(k_gain, limit_G, r_f_max, dt, init_sigma_real, ...
-                               r_allow_vt, rate_limit_vt, test_mode_vt, init_sigma_vt, ...
+                               r_allow_vt, test_mode_vt, init_sigma_vt, ...
                                r_vt_input, theta_vt_rad_input)
                                
-            % 공통 및 실제 타겟 초기화[cite: 1]
+            % 공통 및 실제 타겟 초기화
             obj.k = k_gain;
             obj.max_acc = limit_G * 9.81;
             obj.r_f_max = r_f_max; 
             obj.dt = dt;
             obj.sigma_ref_prev_real = init_sigma_real;
             
-            % 가상 타겟 설정 위치 저장[cite: 1]
+            % 가상 타겟 설정 위치 저장
             obj.r_vt = r_vt_input;
             obj.theta_vt_rad = theta_vt_rad_input;
             
-            % 가상 타겟 초기화[cite: 1]
+            % 가상 타겟 초기화
             obj.r_allow_vt = r_allow_vt;
-            obj.rate_limit_vt = rate_limit_vt;
             obj.test_mode_vt = test_mode_vt;
             obj.sigma_ref_prev_vt = init_sigma_vt;
         end
@@ -65,7 +64,7 @@ classdef RDPG_VT < handle
             % =======================================================
 
             % -----------------------------------------------------------
-            % [1단계] r_f_min 계산하여 현재 Pursuer가 Reachable Region 내에 있는지 확인[cite: 1]
+            % [1단계] r_f_min 계산하여 현재 Pursuer가 Reachable Region 내에 있는지 확인
             % -----------------------------------------------------------
             sigma_t_calc = linspace(0, pi, 1000); 
             
@@ -130,16 +129,10 @@ classdef RDPG_VT < handle
                     sigma_pc_vt = min(sigma_pc_vt, sigma_t_vt);
                 end
                 
-                delta_vt = sigma_pc_vt - obj.sigma_ref_prev_vt;
-                max_change_vt = obj.rate_limit_vt * obj.dt;
-                if abs(delta_vt) > max_change_vt
-                    delta_vt = sign(delta_vt) * max_change_vt;
-                end
-                
             % -----------------------------------------------------------
             % [5단계] 유도 명령 계산
             % -----------------------------------------------------------
-                sigma_ref_new_vt = obj.sigma_ref_prev_vt + delta_vt;
+                sigma_ref_new_vt = sigma_pc_vt;
                 obj.sigma_ref_prev_vt = sigma_ref_new_vt;
                 
                 u_cmd = lambda_dot_vt - obj.k * (sigma_p_vt - sigma_ref_new_vt);

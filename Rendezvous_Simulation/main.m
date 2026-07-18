@@ -12,12 +12,12 @@ addpath('./Rendezvous_Simulation/Helper_Function')
 % RDPG_ACC : RDPG + Acceleration Limits(Fail-Safe : DPG)
 % RDPG_VT : RDPG + Acceleration Limits(Fail-Safe : Virtual Target)
 % RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use a_min)
-cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
+cfg.GUIDANCE_MODE = 'RDPG_MIN'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치 및 리드각
-r_pursuer = 1000;               % Target 기준 Pursuer의 초기 상대거리 [m]
-theta_pursuer = -5;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
+cfg.r_pursuer = 1000;               % Target 기준 Pursuer의 초기 상대거리 [m]
+cfg.theta_pursuer = -60;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
 RDPG_FLAG = 0;                  % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
 sigma_p0_deg = 80;              % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
@@ -61,13 +61,13 @@ cfg.At_constant = 0.0;      % Maneuvering Target constant turn(Reachability-Base
 
 if RDPG_FLAG
     % 자동 계산 로직
-    [sigma_p0_deg, sigma_p0_rad] = RDPG_LeadAngle(r_pursuer, theta_pursuer, cfg.r_allow);
+    [sigma_p0_deg, sigma_p0_rad] = RDPG_LeadAngle(r_pursuer, cfg.theta_pursuer, cfg.r_allow);
     cfg.target_lead_angle_deg = sigma_p0_deg;
-    cfg.psi_p_from_region = sigma_p0_deg - theta_pursuer - 90;
+    cfg.psi_p_auto = sigma_p0_deg - cfg.theta_pursuer - 90;
 else
     % 수동 설정 로직
     cfg.target_lead_angle_deg = sigma_p0_deg;
-    cfg.psi_p_from_region = sigma_p0_deg - theta_pursuer - 90;
+    cfg.psi_p_auto = sigma_p0_deg - cfg.theta_pursuer - 90;
 end
 %% 3. [Theorem 1] 수식 직접 계산 기법 (Helper 함수 호출)
 theory = Max_Point(sigma_p0_rad, cfg.r_allow, cfg.V_p);

@@ -14,11 +14,11 @@ th_psi_deg = cfg.th_psi_deg;
 %% 초기 상태 정의
 Xt_i = cfg.Xt_input_km * 1000; Yt_i = cfg.Yt_input_km * 1000;
 psi_t = cfg.psi_ti_deg * D2R;
-r_i = cfg.r_from_region_m;
-bearing = cfg.bearing_from_region * D2R;
+r_i = cfg.r_pursuer;
+bearing = cfg.theta_pursuer * D2R;
 
 rotation_diff_deg = cfg.psi_ti_deg - 90.0;
-psi_p_deg = cfg.psi_p_from_region + rotation_diff_deg;
+psi_p_deg = cfg.psi_p_auto + rotation_diff_deg;
 psi_p = psi_p_deg * D2R;
 
 global_los_rad = psi_t - bearing; 
@@ -55,12 +55,11 @@ switch cfg.GUIDANCE_MODE
         init_sigma_vt = 0; % 가상 타겟용 초기 시선각 오차는 0으로 시작
         
         % 가상 타겟 전용 유도 파라미터 (필요하면 main에서 cfg로 넘기도록 빼도 돼)
-        rate_limit_rad_vt = 15 * (pi/180);
         test_mode_flag_vt = 0;
         
         missile_guidance = RDPG_VT(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
                                    dt, init_sigma_real, ...
-                                   cfg.r_allow, rate_limit_rad_vt, test_mode_flag_vt, init_sigma_vt, ...
+                                   cfg.r_allow, test_mode_flag_vt, init_sigma_vt, ...
                                    cfg.r_vt, cfg.theta_vt_rad);
 
     case 'RDPG_MIN'
@@ -68,7 +67,7 @@ switch cfg.GUIDANCE_MODE
         init_sigma = current_psi_p - lambda_init;
         missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.min_acc, cfg.r_allow, dt, init_sigma);        
     otherwise
-        error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
+        error('[오류] 알 수 없는 GUIDANCE_MODE.');
 end
 
 num_steps = length(time);
@@ -177,7 +176,7 @@ sim_out.init.Xp_i = Xp_i; sim_out.init.Yp_i = Yp_i;
 sim_out.init.Xt_i = Xt_i; sim_out.init.Yt_i = Yt_i;
 sim_out.init.psi_p = psi_p; sim_out.init.psi_t = psi_t;
 sim_out.init.lambda_init = lambda_init;
-sim_out.init.r_i = r_i; sim_out.init.bearing_deg = cfg.bearing_from_region;
+sim_out.init.r_i = r_i; sim_out.init.bearing_deg = cfg.theta_pursuer;
 sim_out.param.V_p = V_p; sim_out.param.V_t = V_t;
 sim_out.param.At_constant = cfg.At_constant;
 
