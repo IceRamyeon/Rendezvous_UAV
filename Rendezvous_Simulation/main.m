@@ -1,4 +1,4 @@
-%% main_MaxAcc.m
+%% main.m 컨트롤 타워
 close all; clc; clear;
 
 % [중요] 경로 설정에 새로 정의한 Helper_Function 디렉토리를 추가했어!

@@ -1,16 +1,18 @@
+%%  IsPointRegion.m
+% 입력한 점이 Reachable Region 안에 있는지 판별하는 함수
+
 clear; clc; close all;
 
-%% =========================================================
+% =========================================================
 % 0. Input Point (Bearing Angle)
 % Target heading (+y축) 기준: CW (+), CCW (-)
 % =========================================================
 r_pt = 200;
 theta_pt_deg = -68;
 
-%% =========================================================
+% =========================================================
 %  1. 기본 파라미터 및 스케일 팩터
 % =========================================================
-scale = 1;                 % 스케일 팩터 (1이면 기본 스케일, 100이면 100배 확대)
 
 V = 20.0;                  
 g = 9.81;
@@ -18,7 +20,7 @@ acc_limit = 1 * g;
 
 % 거리/반경 파라미터에 스케일 팩터를 곱해서 전체적인 크기 동기화
 r_f_max = 2.0;             
-r_target_radius = 2.0 * scale;     
+r_target_radius = 2.0;     
 max_r_plot_limit = 20000;  % 화면 밖으로 충분히 뻗어나가도록 한계치 대폭 상향
 
 epsilon = 1e-7;
@@ -129,11 +131,11 @@ for i_sigma = 1:num_sigma
     end
 end
 
-%% =========================================================
+% =========================================================
 %  4. Target 및 후처리
 % =========================================================
-target_x = [0, -1, 0, 1] * scale;
-target_y = [1, -1, -0.3, -1] * scale;
+target_x = [0, -1, 0, 1];
+target_y = [1, -1, -0.3, -1];
 
 fill( ...
     ax, target_x, target_y, 'r', ...
@@ -146,7 +148,7 @@ plot( ...
     r_target_radius * sin(theta_circle), ...
     'k--', 'LineWidth', 1.2);
 
-%% =========================================================
+% =========================================================
 %  5. Input Point 영역 포함 여부 검사 및 표시 (Bearing Angle 기준)
 % =========================================================
 theta_pt_rad = deg2rad(theta_pt_deg);
@@ -198,12 +200,12 @@ for i_sigma = 1:num_sigma
 end
 
 % 결과 출력
-fprintf(' 덧칠 완료~\n');
+fprintf(' 덧칠 완료\n');
 fprintf('====================================================\n');
 if is_inside
-    fprintf(' [결과] 입력한 점 (r=%.1f, theta=%.1f도)은 영역 안에 있어.\n', r_pt, theta_pt_deg);
+    fprintf(' [결과] 입력한 점 (r=%.1f, theta=%.1f도)은 영역 안에 있음.\n', r_pt, theta_pt_deg);
 else
-    fprintf(' [결과] 입력한 점 (r=%.1f, theta=%.1f도)은 영역 밖에 있네.\n', r_pt, theta_pt_deg);
+    fprintf(' [결과] 입력한 점 (r=%.1f, theta=%.1f도)은 영역 밖에 있음.\n', r_pt, theta_pt_deg);
 end
 fprintf('====================================================\n');
 
@@ -214,10 +216,10 @@ plot(ax, x_pt, y_pt, 'bp', 'MarkerFaceColor', 'b', 'MarkerSize', 12);
 text(ax, x_pt, y_pt, sprintf('  Input Point'), 'Color', 'b', 'FontSize', 12, 'FontWeight', 'bold');
 
 % 점이 잘리지 않도록 기존 축 범위와 점의 위치를 비교해서 유동적으로 축 설정
-x_lb = min([100 * scale * -1, x_pt - 50]);
-x_up = max([10 * scale * 1,  x_pt + 50]);
-y_lb = min([50 * scale * -1, y_pt - 50]);
-y_up = max([50 * scale * 1,  y_pt + 50]);
+x_lb = min([100 * -1, x_pt - 50]);
+x_up = max([10,  x_pt + 50]);
+y_lb = min([50 * -1, y_pt - 50]);
+y_up = max([50,  y_pt + 50]);
 
 xlim(ax, [x_lb, x_up]);
 ylim(ax, [y_lb, y_up]);
