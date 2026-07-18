@@ -10,14 +10,14 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 초기조건 및 시뮬레이션 파라미터 설정
-cfg.GUIDANCE_MODE = 'RDPG_MIN'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
+cfg.GUIDANCE_MODE = 'RDPG'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치 및 리드각
-r_pursuer = 1000;             
-theta_pursuer = -0;           % 초기 베어링이 65.15도 일 때 sigma_pc = 62.5도 근처로 조정됨.
+r_pursuer = 1000;             % Target 기준 Pursuer의 초기 상대거리 (m)
+theta_pursuer = -5;           % Target 기준 Pursuer의 초기 상대방위각 (deg)
 RDPG_FLAG = 0;              % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
-sigma_p0_deg = -30;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_deg = 80;          % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
@@ -28,7 +28,7 @@ cfg.Yt_input_km = 0.0;
 cfg.psi_ti_deg = 90;
 
 % 시뮬레이션 결과 저장
-cfg.auto_save = 1;          % 1 : 자동 저장, 0 : 저장 안 함
+cfg.auto_save = 0;          % 1 : 자동 저장, 0 : 저장 안 함
 target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.4\RDPG_MIN_-30'; % 저장 경로
 cfg.save_dir = fullfile(target_path);
 
@@ -38,9 +38,12 @@ cfg.r_vt = 100.0;
 theta_vt_deg = -75.0;
 cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 
+% RDPG_MIN 관련 파라미터
+cfg.min_acc = 0.1; % 회선시 가속도 제한
+
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;       
-cfg.tf = 40;              
+cfg.tf = 60;              
 cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    

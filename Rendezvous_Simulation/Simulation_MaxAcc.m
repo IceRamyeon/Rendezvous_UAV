@@ -66,7 +66,7 @@ switch cfg.GUIDANCE_MODE
     case 'RDPG_MIN'
         % 초기 리드각 계산
         init_sigma = current_psi_p - lambda_init;
-        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma);        
+        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.min_acc, cfg.r_allow, dt, init_sigma);        
     otherwise
         error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
 end

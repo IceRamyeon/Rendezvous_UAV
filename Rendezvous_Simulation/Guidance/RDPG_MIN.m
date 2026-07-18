@@ -6,10 +6,10 @@ classdef RDPG_MIN < handle
     end
     
     methods
-        function obj = RDPG_MIN(k_gain, limit_G, r_f_max, dt, init_sigma_rad)
+        function obj = RDPG_MIN(k_gain, limit_G, min_G, r_f_max, dt, init_sigma_rad)
             obj.k = k_gain;
             obj.max_acc = limit_G * 9.81;
-            obj.min_acc = limit_G * 9.81 * 0.1; % [주의] 루트 계산을 위해 양수 유지
+            obj.min_acc = min_G * 9.81; % [주의] 루트 계산을 위해 양수 유지
             obj.r_f_max = r_f_max; 
             obj.dt = dt;
             obj.sigma_ref_prev = init_sigma_rad;
