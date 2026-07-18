@@ -47,6 +47,7 @@ cfg.tf = 60;
 cfg.pause_t = 0.1;        
 cfg.skip_frame = 50;       
 cfg.stop_condition = 0;    
+cfg.auto_save = 0;         
 
 % [제어 및 물리적 제한 가속도] 
 cfg.limit_acc = 1;         % 1G 제한 상태에서 클리핑 거동 확인!

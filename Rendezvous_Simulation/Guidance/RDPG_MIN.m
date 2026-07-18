@@ -2,7 +2,7 @@ classdef RDPG_MIN < handle
     properties
         k, max_acc, r_f_max, dt
         sigma_ref_prev 
-        min_acc % [수정] 클래스 속성에 min_acc 추가
+        a_min % [수정] 클래스 속성에 a_min 추가
     end
     
     methods
@@ -52,47 +52,61 @@ classdef RDPG_MIN < handle
             % [2단계] Safe / Unsafe 판별
             % -----------------------------------------------------------
             if r >= r_contour_min && r <= r_contour_max
-                x_candidate = sigma_p;
+                sigma_pc = sigma_p;
                 mode_flag = 0; 
             else
                 % -------------------------------------------------------
                 % [3단계] Unsafe 시 새로운 sigma_pc 탐색
                 % -------------------------------------------------------
+                % 주어진 r_f로 랑데부에 성공하는 sigma_pc을 찾기
                 eqn = @(x) sqrt(r/obj.r_f_max) * cos((sigma_t + x)/2) - cos(x);
                 
                 try
-                    x_candidate = fzero(eqn, obj.sigma_ref_prev);
                     
-                    y_calc_new = (sin(sigma_t_calc) - sin(x_candidate)) .* (1 + cos(sigma_t_calc + x_candidate)) ./ (cos(x_candidate)^2 + dynamic_eps);
-                    y_max_new = max(y_calc_new);
-                    r_f_min_new = (y_max_new * V_p^2) / (2 * obj.max_acc);
+                    sigma_pc = fzero(eqn, obj.sigma_ref_prev);
                     
-                    if r_f_min_new > obj.r_f_max
-                        mode_flag = 2;
-                        % mode_flag = 2일 때, min_acc가 그리는 영역과 접하는 r_f로 랑데부 시도
-                        r_f_min_escape = (y_max_new * V_p^2) / (2 * obj.min_acc);
+                    % sigma_pc을 바탕으로 f(sigma_pc;sigma_t) = C 의 최댓값(C_max)을 계산
+                    y_calc_new = (sin(sigma_t_calc) - sin(sigma_pc)) .* (1 + cos(sigma_t_calc + sigma_pc)) ./ (cos(sigma_pc)^2 + dynamic_eps);
+                    C_max = max(y_calc_new);
 
-                        eqn_escape = @(x) sqrt(r/r_f_min_escape) * cos((sigma_t + x)/2) - cos(x);
+                    % C = V_p^2 / (2 * a_max * r_f)에서, 주어진 a_max을 대입하여 r_f_compare 계산
+                    r_f_compare = (C_max * V_p^2) / (2 * obj.max_acc);
+                    
+                    % r_f_compare가 주어진 r_f보다 작거나 같으면, sigma_pc로 만들어진 trajectory가 a_max을 넘지 않음.(Success-Safe)
+                    % r_f_compare가 주어진 r_f보다 크면, sigma_pc로 만들어진 trajectory가 a_max을 초과하므로 탈출해야함.(Fail-Safe)
+                    if r_f_compare > obj.r_f_max
+                        mode_flag = 2;
+                        % -------------------------------------------------------
+                        % [4단계] Fail-Safe 탈출
+                        % -------------------------------------------------------
+                        % a_min을 사용하면, a_max보다 큰 영역을 그리므로 pursuer가 Reachable Region 내에 들어왔을 때 
+                        % 회선할 수 있는 여유가 생김. 큰 회선 반경을 확보하기 위해, a_min을 사용하여 r_f_escape를 계산하고, 그에 맞는 sigma_pc2을 찾음.
+                        % mode_flag = 2일 때, a_min가 그리는 영역과 접하는 r_f_escape로 랑데부 시도
+                        r_f_escape = (C_max * V_p^2) / (2 * obj.a_min);
+                        
+                        % x = sigma_pc2
+                        eqn_escape = @(x) sqrt(r/r_f_escape) * cos((sigma_t + x)/2) - cos(x);
                         try 
-                            x_candidate = fzero(eqn_escape, obj.sigma_ref_prev);
+                            sigma_pc2 = fzero(eqn_escape, obj.sigma_ref_prev);
+                            sigma_pc = sigma_pc2; % sigma_pc를 sigma_pc2로 업데이트
                         catch
-                            x_candidate = obj.sigma_ref_prev; 
+                            sigma_pc = obj.sigma_ref_prev; 
                         end
                         
-                        % [수정] 이 위치에 있던 x_candidate = obj.sigma_ref_prev; 삭제 완료
                     else
+                        % 4단계로 갈 필요없이, 현재 위치에서 sigma_pc의 수정만으로 랑데부에 성공 가능. (Success-Safe)
                         mode_flag = 1;
                     end
                 catch
                     mode_flag = 2;
-                    x_candidate = obj.sigma_ref_prev;                    
+                    sigma_pc = obj.sigma_ref_prev;                    
                 end
             end
 
             % -----------------------------------------------------------
-            % [4단계] 유도 명령 계산
+            % [5단계] 유도 명령 계산
             % -----------------------------------------------------------
-            sigma_ref_filtered = x_candidate;
+            sigma_ref_filtered = sigma_pc;
             obj.sigma_ref_prev = sigma_ref_filtered;
             
             u_cmd = lambda_dot - obj.k * (sigma_p - sigma_ref_filtered);
