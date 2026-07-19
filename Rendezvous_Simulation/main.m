@@ -12,12 +12,13 @@ addpath('./Rendezvous_Simulation/Helper_Function')
 % RDPG_ACC : RDPG + Acceleration Limits(Fail-Safe : DPG)
 % RDPG_VT : RDPG + Acceleration Limits(Fail-Safe : Virtual Target)
 % RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use a_min)
-cfg.GUIDANCE_MODE = 'RDPG_MIN'; % DPG, RDPG, RDPG_ACC, RDPG_VT, RDPG_MIN 
+% RDPG_r_f : RDPG + Acceleration Limits(Fail-safe : Use r_f_escape)
+cfg.GUIDANCE_MODE = 'RDPG_r_f'; 
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치 및 리드각
 cfg.r_pursuer = 1000;               % Target 기준 Pursuer의 초기 상대거리 [m]
-cfg.theta_pursuer = -60;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
+cfg.theta_pursuer = -20;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
 RDPG_FLAG = 0;                  % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
 sigma_p0_deg = 80;              % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
@@ -39,7 +40,10 @@ theta_vt_deg = -75.0;                       % Virtual Target의 bearing angle[de
 cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 
 % RDPG_MIN 관련 파라미터
-cfg.min_acc = 0.1; % 회선시 가속도 제한
+cfg.a_min = 0.1;                        % Fail-Safe시 escape a_min [G]
+
+% RDPG_r_f 관련 파라미터
+cfg.r_f_escape = 75;                   % Fail-Safe시 escape r_f
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;                    % Time step

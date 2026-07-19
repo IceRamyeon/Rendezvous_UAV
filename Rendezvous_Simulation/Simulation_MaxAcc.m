@@ -65,7 +65,12 @@ switch cfg.GUIDANCE_MODE
     case 'RDPG_MIN'
         % 초기 리드각 계산
         init_sigma = current_psi_p - lambda_init;
-        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.min_acc, cfg.r_allow, dt, init_sigma);        
+        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.a_min, cfg.r_allow, dt, init_sigma);
+        
+    case 'RDPG_r_f'
+        % 초기 리드각 계산
+        init_sigma = current_psi_p - lambda_init;
+        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.r_f_escape, cfg.r_allow, dt, init_sigma); 
     otherwise
         error('[오류] 알 수 없는 GUIDANCE_MODE.');
 end
@@ -128,6 +133,9 @@ for i = 1:num_steps
             r_vt_dist, lambda_dot_vt, sigma_p_vt, sigma_t_vt);
         
         case 'RDPG_MIN'
+            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
+
+        case 'RDPG_r_f'
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
         otherwise
             error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
