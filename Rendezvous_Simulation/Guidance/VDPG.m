@@ -1,5 +1,5 @@
 classdef VDPG < handle
-    % VDPG (Deviated Pursuit Guidance)
+    % VDPG (Variable Deviated Pursuit Guidance)
     % VDPG 수식: u = lambda_dot - k*(sigma_p - sigma_pc)
     
     properties
