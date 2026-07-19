@@ -94,6 +94,7 @@ for i = 1:num_steps
     lambda_dot_vt = NaN;
     x_vt_log = NaN;
     y_vt_log = NaN;
+    r_f_log = NaN;
     
     switch cfg.GUIDANCE_MODE
         case 'RDPG_ACC'
@@ -127,7 +128,6 @@ for i = 1:num_steps
             % 배열에 로깅하기 위해 변수 할당
             x_vt_log = X_vt;
             y_vt_log = Y_vt;
-            r_f_log = NaN;
 
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(...
             V_p, r, lambda_dot, sigma_p, sigma_t, ...
