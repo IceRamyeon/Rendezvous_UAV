@@ -38,9 +38,6 @@ classdef RDPG_T < handle
             bearing_rad = abs(pi - abs(sigma_t_wrapped)); 
             bearing_deg = rad2deg(bearing_rad);
             
-            % -----------------------------------------------------------
-            % [Graduation Check] 졸업 요건
-            % -----------------------------------------------------------
             if bearing_deg > 70
                 obj.safety_done = true;
             end
