@@ -1,6 +1,6 @@
 function theory = Max_Point(sigma_p0_rad, r_allow, V_p)
 %% Max_Point.m
-% Theorem 1 수식의 LHS Grid Sweep을 통해 수치 해석적으로 최대 가속도 예측점을 찾는 함수야.
+% Theorem 1 수식의 LHS Grid Sweep을 통해 수치 해석적으로 최대 가속도 예측점을 찾는 함수.
 
     n_points = 50000;                         % sweep 점 개수
     epsilon = 1e-7;                           % 분모 발산 방지 조건
