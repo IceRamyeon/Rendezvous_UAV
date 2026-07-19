@@ -59,14 +59,10 @@ function Plot_Static_Results(cfg, sim_out)
     end
     hold off;
 
-    % =========================================================
-    % Figure 8 (RDPG_SAFE 전용)
-    % =========================================================
-    if strcmp(cfg.GUIDANCE_MODE, 'RDPG_SAFE')
-        fig8 = figure(8); set(fig8, 'Position', [1030, 50, 500, 750], 'Theme', 'light');
-        subplot(3, 1, 1); plot(time, hist_state(10, :), 'b-', 'LineWidth', 2); grid on; title('CLF');
-        subplot(3, 1, 2); plot(time, hist_state(11, :), 'r-', 'LineWidth', 2); grid on; title('CBF Margin');
-        subplot(3, 1, 3); plot(time, hist_state(12, :), 'm-', 'LineWidth', 2); grid on; title('Slack Variable');
+    if strcmp(cfg.GUIDANCE_MODE, 'RDPG_MIN')
+        fig8 = figure(8); set(fig8, 'Position', [1030, 50, 500, 160], 'Theme', 'light');
+        plot(time, hist_state(17, :), 'r-', 'LineWidth', 2); grid on; 
+        title('[Fig 8-1] r_{f} History');
     end
 
     % 이미지 저장 로직

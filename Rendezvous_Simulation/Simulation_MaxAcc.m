@@ -70,13 +70,13 @@ switch cfg.GUIDANCE_MODE
     case 'RDPG_r_f'
         % 초기 리드각 계산
         init_sigma = current_psi_p - lambda_init;
-        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.r_f_escape, cfg.r_allow, dt, init_sigma); 
+        missile_guidance = RDPG_r_f(cfg.gain_k, cfg.limit_acc, cfg.r_f_escape, cfg.r_allow, dt, init_sigma); 
     otherwise
         error('[오류] 알 수 없는 GUIDANCE_MODE.');
 end
 
 num_steps = length(time);
-hist_state = zeros(16, num_steps); 
+hist_state = zeros(17, num_steps); 
     
 % 시뮬레이션 연산[cite: 4]
 for i = 1:num_steps
@@ -127,13 +127,14 @@ for i = 1:num_steps
             % 배열에 로깅하기 위해 변수 할당
             x_vt_log = X_vt;
             y_vt_log = Y_vt;
+            r_f_log = NaN;
 
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(...
             V_p, r, lambda_dot, sigma_p, sigma_t, ...
             r_vt_dist, lambda_dot_vt, sigma_p_vt, sigma_t_vt);
         
         case 'RDPG_MIN'
-            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
+            [acc_cmd, sigma_ref_new, mode_flag, r_f_log] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
 
         case 'RDPG_r_f'
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
@@ -149,8 +150,11 @@ for i = 1:num_steps
     current_Xt = current_Xt + V_t * cos(current_psi_t) * dt;
     current_Yt = current_Yt + V_t * sin(current_psi_t) * dt;
     
-    % 상태 저장 (16개 변수 로깅: 맨 뒤에 가상 타겟 x, y 추가)[cite: 4]
-    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag; current_Xp; current_Yp; current_Xt; current_Yt; x_vt_log; y_vt_log];
+    % 상태 저장
+    hist_state(:, i) = [r; lambda; current_psi_p; current_psi_t; ...
+    sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag; current_Xp; current_Yp; ...
+    current_Xt; current_Yt; x_vt_log; y_vt_log; ...
+    r_f_log];
     
     heading_diff_deg = abs(wrapTo180((current_psi_p - current_psi_t) * R2D));
     if r <= r_allow && heading_diff_deg < th_psi_deg

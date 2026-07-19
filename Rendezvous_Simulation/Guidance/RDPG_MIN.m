@@ -15,7 +15,7 @@ classdef RDPG_MIN < handle
             obj.sigma_ref_prev = init_sigma_rad;
         end
 
-        function [acc_cmd, sigma_ref_filtered, mode_flag] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t)
+        function [acc_cmd, sigma_ref_filtered, mode_flag, r_f_log] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t)
             
             % =======================================================
             % Dynamic Epsilon 스케줄링 로직
@@ -57,6 +57,7 @@ classdef RDPG_MIN < handle
             if r >= r_contour_min && r <= r_contour_max
                 sigma_pc = sigma_p;
                 mode_flag = 0; 
+                r_f_log = obj.r_f_max;
             else
                 % -------------------------------------------------------
                 % [3단계] Unsafe 시 새로운 sigma_pc 탐색
@@ -85,6 +86,7 @@ classdef RDPG_MIN < handle
                         % 회선할 수 있는 여유가 생김. 큰 회선 반경을 확보하기 위해, a_min을 사용하여 r_f_escape를 계산하고, 그에 맞는 sigma_pc2을 찾음.
                         % mode_flag = 2일 때, a_min가 그리는 영역과 접하는 r_f_escape로 랑데부 시도
                         r_f_escape = (C_max * V_p^2) / (2 * obj.a_min);
+                        r_f_log = r_f_escape;
                         
                         % x = sigma_pc2
                         eqn_escape = @(x) sqrt(r/r_f_escape) * cos((sigma_t + x)/2) - cos(x);
@@ -98,10 +100,12 @@ classdef RDPG_MIN < handle
                     else
                         % 4단계로 갈 필요없이, 현재 위치에서 sigma_pc의 수정만으로 랑데부에 성공 가능. (Success-Safe)
                         mode_flag = 1;
+                        r_f_log = obj.r_f_max;
                     end
                 catch
                     mode_flag = 2;
-                    sigma_pc = obj.sigma_ref_prev;                    
+                    sigma_pc = obj.sigma_ref_prev;  
+                    r_f_log = obj.r_f_max;                  
                 end
             end
 

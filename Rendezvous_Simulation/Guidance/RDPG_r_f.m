@@ -2,7 +2,7 @@ classdef RDPG_r_f < handle
     properties
         k, max_acc, r_f_max, dt
         sigma_ref_prev 
-        r_f_escape % Fail-Safe 탈출을 위한 가속도
+        r_f_escape % Fail-Safe 탈출을 위한 r_f
     end
     
     methods

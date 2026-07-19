@@ -11,16 +11,16 @@ addpath('./Rendezvous_Simulation/Helper_Function')
 % RDPG : Reachability-based rendezvous guidance(2022)
 % RDPG_ACC : RDPG + Acceleration Limits(Fail-Safe : DPG)
 % RDPG_VT : RDPG + Acceleration Limits(Fail-Safe : Virtual Target)
-% RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use a_min)
 % RDPG_r_f : RDPG + Acceleration Limits(Fail-safe : Use r_f_escape)
-cfg.GUIDANCE_MODE = 'RDPG_r_f'; 
+% RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use a_min)
+cfg.GUIDANCE_MODE = 'RDPG_MIN'; 
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치 및 리드각
 cfg.r_pursuer = 1000;               % Target 기준 Pursuer의 초기 상대거리 [m]
-cfg.theta_pursuer = -20;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
+cfg.theta_pursuer = -10;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
 RDPG_FLAG = 0;                  % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
-sigma_p0_deg = 80;              % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
+sigma_p0_deg = 0;              % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능
 sigma_p0_rad = deg2rad(sigma_p0_deg);
 
 % Target 초기 위치 및 자세
@@ -43,7 +43,7 @@ cfg.theta_vt_rad = deg2rad(theta_vt_deg);
 cfg.a_min = 0.1;                        % Fail-Safe시 escape a_min [G]
 
 % RDPG_r_f 관련 파라미터
-cfg.r_f_escape = 75;                   % Fail-Safe시 escape r_f
+cfg.r_f_escape = 200;                   % Fail-Safe시 escape r_f
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;                    % Time step
@@ -119,7 +119,7 @@ sigma_p_f_deg = sim_out.hist_state(5, end) * (180/pi); % rad to deg
 psi_p_f_deg = sim_out.hist_state(3, end) * (180/pi);   % rad to deg
 
 fprintf('======================================================\n');
-fprintf('  [랑데부 완료]    \n');
+fprintf('  [시뮬레이션 완료]    \n');
 fprintf('======================================================\n');
 fprintf('1. Pursuer 초기 상대위치      : (%.1f m, %.1f deg)\n', r_i, bearing_i); 
 fprintf('2. Pursuer 초기 Inertial 위치 : (%.1f m, %.1f m)\n', Xp_i, Yp_i); 
