@@ -1,29 +1,34 @@
 %% Plot_Multiple_Scenarios.m
 clc; clear; close all;
 
+% Target 정보 입력
+xt = 0;            % [m]
+yt = 0;           % [m]
+heading = 90;      % [deg]
+
+
 % -----------------------------------------------------------
 % 1. 플롯할 파일 이름 배열 설정 (여기에 파일명 추가/삭제)
 % -----------------------------------------------------------
 file_list = {
-    'MIN_-30.mat', ...
-    'MIN_0.mat', ...
-    'MIN_30.mat'
+    'r_f_-30.0.mat', ...
+    'r_f_0.0.mat', ...
+    'r_f_30.0.mat'
 };
 
 % RDPG 비교군 파일 리스트 (비워두면 file_list만 단독으로 플롯함)
 file_list_comparison = {
 };
 
-% --- (추가됨) 사용자가 직접 입력하는 범례 이름 설정 ---
-% 파일 리스트 개수와 반드시 일치해야 해, 선생!
-custom_names_prop = {'UAV1 (\sigma_p=-30\circ)', 'UAV2 (\sigma_p=0\circ)', 'UAV3 (\sigma_p=30\circ)'};
-custom_names_comp = {'UAV1 (\sigma_p=40\circ)', 'UAV2 (\sigma_p=60\circ)', 'UAV3 (\sigma_p=80\circ)'};
+% 파일 리스트 개수와 반드시 일치해야 함.
+custom_names_prop = {'UAV1 (\sigma_{p0}=-30\circ,r_f)', 'UAV2 (\sigma_{p0}=0\circ,r_f), UAV3 (\sigma_{p0}=30\circ,r_f)'};
+% custom_names_comp = {''};
 % -----------------------------------------------------------
 
 % 파일이 저장된 폴더 경로
-data_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.4';
+data_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260720 미팅준비\Sim4.4\RDPG_r_f';
 % 자동으로 PNG를 저장할 폴더 경로
-save_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.4\Multiple_plots}';
+save_dir = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260720 미팅준비\Sim4.4\RDPG_r_f\plots';
 
 % -----------------------------------------------------------
 % 2. 플롯 및 색상/마커 초기화
@@ -74,7 +79,7 @@ for i = 1:n_files
     % --- 기본 데이터 로드 ---
     full_path_prop = fullfile(data_dir, file_list{i});
     if ~exist(full_path_prop, 'file')
-        warning('으헤... %s 파일이 없어. 건너뛸게.', file_list{i});
+        warning('%s 파일이 없음. 건너뜀 >>', file_list{i});
         continue;
     end
     data_prop = load(full_path_prop).log_data;
@@ -113,9 +118,14 @@ for i = 1:n_files
     % ==========================================
     % 기본/Proposed 데이터 플롯 (실선)
     % ==========================================
-    plot(ax0, data_prop.Trajectory.Xt, data_prop.Trajectory.Yt, 'k--', 'LineWidth', 1, 'HandleVisibility', 'off'); 
+    plot(ax0, data_prop.Trajectory.Xt, data_prop.Trajectory.Yt, 'k--', 'LineWidth', 1, 'HandleVisibility', 'off'); %[cite: 2]
     
-    % Proposed 플롯 - 핸들 저장
+    % Trajectory Plot에 Reachable Region 그리기 (heading은 라디안으로 변환)
+    % psi_t_rad = deg2rad(heading);
+    % draw_ReachableRegion_forMultipleplots(ax0, 20, 1, 2, xt, yt, psi_t_rad);
+    % -------------------
+    
+    % Plot 그리기
     h0_p(i) = plot(ax0, data_prop.Trajectory.Xp, data_prop.Trajectory.Yp, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
     h1_p(i) = plot(ax1, t_prop, data_prop.Relative_Distance, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);
     h2_p(i) = plot(ax2, t_prop, data_prop.Closing_Velocity, '-', 'Color', c_style, 'Marker', m_style, 'MarkerIndices', mk_idx_prop, 'LineWidth', 1.5);

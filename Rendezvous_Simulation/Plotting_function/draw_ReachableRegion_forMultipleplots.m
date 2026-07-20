@@ -1,5 +1,4 @@
-function draw_Accumulated_IntersectRegion(ax, V, acc_limit, r_f_max)
-    % 기존 누적 영역 스크립트를 함수화하여 특정 axes에 그리도록 변환
+function draw_ReachableRegion_forMultipleplots(ax, V, acc_limit, r_f_max, xt, yt, psi_t)
     hold(ax, 'on');
          
     r_target_radius = 2.0;
@@ -66,8 +65,17 @@ function draw_Accumulated_IntersectRegion(ax, V, acc_limit, r_f_max)
                 continue;
             end
             
-            % 다각형(Polygon)을 덧그리기 (투명도 0.1 적용)[cite: 2]
-            fill(ax, x_polygon, y_polygon, region_color, 'EdgeColor', 'none', 'FaceAlpha', 0.05);
+            % 1. 회전 변환: 기준 방향(+y축, 즉 pi/2)에서 Target의 실제 Heading(psi_t)으로 회전
+            theta = psi_t - pi/2;
+            x_rot = x_polygon .* cos(theta) - y_polygon .* sin(theta);
+            y_rot = x_polygon .* sin(theta) + y_polygon .* cos(theta);
+            
+            % 2. 평행 이동: Target의 실제 위치(xt, yt)로 이동
+            x_final = x_rot + xt;
+            y_final = y_rot + yt;
+            
+            % 3. 덧그리기
+            fill(ax, x_final, y_final, region_color, 'EdgeColor', 'none', 'FaceAlpha', 0.05);
         end
-    end
-end
+    end 
+end 

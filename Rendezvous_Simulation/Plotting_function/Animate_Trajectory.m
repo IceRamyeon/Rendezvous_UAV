@@ -130,6 +130,8 @@ function Animate_Trajectory(cfg, sim_out)
     % Figure 3, 4, 5: Animation Setup[cite: 6]
     % =========================================================
     fig3 = figure('Position', [50 50 450 450], 'Name', '3. Target Centered', 'Theme', 'light'); grid on; axis equal; hold on;
+    ax3 = get(fig3, 'CurrentAxes');
+    draw_Accumulated_IntersectRegion(ax3, V_p, acc_limit, r_f_max);
     
     % [추가] Figure 3용 Region Patch (초기엔 빈 데이터로 세팅)
     h_dpg_region_fig3 = patch(nan, nan, [0.8 0.7 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
@@ -257,10 +259,6 @@ function Animate_Trajectory(cfg, sim_out)
     if cfg.auto_save == 1
         close(vidObj3); close(vidObj4); close(vidObj5);
     end
-    
-    % Animation 종료 후 Figure 3에 Intersect Region 덧그리기
-    ax3 = get(fig3, 'CurrentAxes');
-    draw_Accumulated_IntersectRegion(ax3, V_p, acc_limit, r_f_max);
     
     % 덧그린 영역이 애니메이션의 메인 궤적을 가리지 않도록 객체를 맨 뒤로 배치
     patch_objs = findobj(ax3, 'Type', 'Patch');
