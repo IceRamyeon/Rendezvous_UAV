@@ -60,8 +60,7 @@ function Plot_Static_Results(cfg, sim_out)
     hold off;
 
     if strcmp(cfg.GUIDANCE_MODE, 'RDPG_MIN')
-        fig8 = figure(8); set(fig8, 'Position', [1030, 50, 500, 160], 'Theme', 'light');
-        plot(time, hist_state(17, :), 'r-', 'LineWidth', 2); grid on; 
+        fig8 = figure(8); set(fig8, 'Position', [1030, 50, 500, 160], 'Theme', 'light');plot(time, hist_state(17, :), 'r-', 'LineWidth', 2); grid on; 
         title('[Fig 8-1] r_{f} History');
     end
 
