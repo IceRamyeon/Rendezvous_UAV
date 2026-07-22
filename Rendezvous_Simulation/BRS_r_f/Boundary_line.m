@@ -4,7 +4,7 @@ clear; clc;
 %  1. 기본 파라미터 및 스케일 팩터
 % =========================================================
 scale = 1;                 
-r_f = 2.0 * scale;         % r_f를 딱 2m로 고정
+r_f = 2.0 * scale;        
 r_target_radius = 2.0 * scale;     
 max_r_plot_limit = 20000;  
 
@@ -16,7 +16,7 @@ hold(ax, 'on');
 grid(ax, 'off');           
 axis(ax, 'equal');
 
-% 보고 싶은 단일 각도 설정 (선생이 말한 63도)
+% 보고 싶은 단일 각도 설정
 sigma_pc_deg = 62.6;
 sigma_pc_rad = deg2rad(sigma_pc_deg);
 dark_green = [0.0, 0.6, 0.0];
