@@ -72,8 +72,10 @@ switch cfg.GUIDANCE_MODE
 
     case 'RDPG_FRS'
         init_sigma = current_psi_p - lambda_init;
-        sigma_pref = cfg.sigma_pref_deg;
-        missile_guidance = RDPG_FRS(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma, sigma_pref, cfg.t_for); 
+        sigma_pref = deg2rad(cfg.sigma_pref_deg);
+        rate_limit = deg2rad(cfg.rate_limit_deg);
+        missile_guidance = RDPG_FRS(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma, ...
+        sigma_pref, cfg.t_for, cfg.sigma_FRS_list, rate_limit); 
     otherwise
         error('[오류] 알 수 없는 GUIDANCE_MODE.');
 end

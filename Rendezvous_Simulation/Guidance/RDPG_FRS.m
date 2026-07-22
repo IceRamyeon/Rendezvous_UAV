@@ -2,28 +2,31 @@ classdef RDPG_FRS < handle
     properties
         k, max_acc, r_f_max, dt
         sigma_ref_prev
-        sigma_pref % 62.6도와 같은 선호 각도
-        t_for      % Fail-Safe 탐색을 위한 전방향 시뮬레이션 시간
+        sigma_pref       % 62.6도와 같은 선호 각도
+        t_for            % Fail-Safe 탐색을 위한 전방향 시뮬레이션 시간
+        sigma_FRS_list   % Fail-Safe 탐색을 위한 sigma_pc 각도 리스트
+        rate_limit          % Rate Limit (rad/s)
     end
     
     methods
-        function obj = RDPG_FRS(k_gain, limit_G, r_f_max, dt, init_sigma_rad, sigma_pref, t_for)
+        function obj = RDPG_FRS(k_gain, limit_G, r_f_max, dt, init_sigma_rad, sigma_pref, t_for, sigma_FRS_list, rate_limit)
             obj.k = k_gain;
             obj.max_acc = limit_G * 9.81;
             obj.r_f_max = r_f_max; 
             obj.dt = dt;
             obj.sigma_ref_prev = init_sigma_rad;
             obj.sigma_pref = sigma_pref;
-            obj.t_for = t_for; % 생성자에서 t_for 입력받음
+            obj.t_for = t_for; 
+            obj.sigma_FRS_list = sigma_FRS_list; 
+            obj.rate_limit = rate_limit; % Rate limit 초기화
         end
 
-        function [x_traj, y_traj] = get_Trajectory(obj, sigma_pref)
+        function [x_traj, y_traj] = get_Boundary(obj, sigma_pref)
             % 주어진 sigma_pref로 One_sigma_pc.m의 Boundary line의 점들 생성 및 저장   
             r_f = obj.r_f_max;
             max_r_plot_limit = 20000;  
 
-            sigma_pc_deg_traj = sigma_pref;
-            sigma_pc_rad_traj = deg2rad(sigma_pc_deg_traj);
+            sigma_pc_rad_traj = sigma_pref;
 
             % 해석적 궤적 계산
             sigma_t_traj = linspace(-sigma_pc_rad_traj, pi - sigma_pc_rad_traj - 1e-5, 2000);
@@ -47,8 +50,6 @@ classdef RDPG_FRS < handle
 
         function [acc_cmd, sigma_ref_filtered, mode_flag] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t, V_t, gamma_t, x_curr, y_curr)
             
-            sigma_pc_deg_set = -170:10:180; 
-
             % =======================================================
             % Dynamic Epsilon 스케줄링 로직
             % =======================================================
@@ -104,13 +105,15 @@ classdef RDPG_FRS < handle
                         % -------------------------------------------------------
                         % [4단계] Fail-Safe 탈출
                         % -------------------------------------------------------
+                        [x_traj, y_traj] = obj.get_Boundary(obj.sigma_pref);
                         
-                        [x_traj, y_traj] = obj.get_Trajectory(obj.sigma_pref);
+                        num_angles = length(obj.sigma_FRS_list);
+                        Distance_point = zeros(num_angles, 2); 
+                        signed_distances = zeros(num_angles, 1);
+                        abs_distances = zeros(num_angles, 1);
                         
-                        final_points = zeros(length(sigma_pc_deg_set), 2); 
-                        
-                        for i = 1:length(sigma_pc_deg_set)
-                            sigma_pc_val = deg2rad(sigma_pc_deg_set(i)); 
+                        for i = 1:num_angles
+                            sigma_pc_val = deg2rad(obj.sigma_FRS_list(i)); 
                             
                             % 상대 운동 방정식
                             dydt = @(t, Y) [
@@ -120,41 +123,54 @@ classdef RDPG_FRS < handle
                             
                             % obj.t_for 및 x_curr, y_curr 사용
                             [~, Y] = ode45(dydt, [0 obj.t_for], [x_curr; y_curr]); 
-                            final_points(i, :) = Y(end, :); 
+                            Distance_point(i, :) = Y(end, :); 
+                            
+                            % Trajectory까지의 최소 절대 거리 계산
+                            if ~isempty(x_traj)
+                                distances = sqrt((x_traj - Distance_point(i, 1)).^2 + (y_traj - Distance_point(i, 2)).^2);
+                                abs_distances(i) = min(distances);
+                            else
+                                abs_distances(i) = inf;
+                            end
                         end
                         
-                        in = inpolygon(final_points(:,1), final_points(:,2), x_traj, y_traj);
-
-                        if any(in) && any(~in)
-                            % Region 경계를 지나는 경우: Region 내부 점들 중 sigma_pref에 가장 가까운 것 선택
-                            valid_idx = find(in);
-                            [~, min_idx] = min(abs(sigma_pc_deg_set(valid_idx) - obj.sigma_pref));
-                            best_idx = valid_idx(min_idx);
-                            
-                            sigma_pc = deg2rad(sigma_pc_deg_set(best_idx));
-                            mode_flag = 3; 
-                        else
-                            % 점들이 완전히 Region 밖(또는 안)에 있는 경우: get_Trajectory 궤적과 거리가 가장 짧은 점의 sigma_pc 선택
-                            min_dist = inf; 
-                            best_fp_idx = 1; 
-                            
-                            if ~isempty(x_traj)
-                                for i = 1:size(final_points, 1) 
-                                    % Final Point와 궤적 상의 모든 점 사이의 거리 계산
-                                    distances = sqrt((x_traj - final_points(i, 1)).^2 + (y_traj - final_points(i, 2)).^2); 
-                                    
-                                    local_min_dist = min(distances); 
-                                    
-                                    if local_min_dist < min_dist 
-                                        min_dist = local_min_dist; 
-                                        best_fp_idx = i; 
-                                    end
+                        if ~isempty(x_traj)
+                            % inpolygon을 사용하여 부호 결정 (영역 밖: +, 영역 안: -)
+                            in = inpolygon(Distance_point(:,1), Distance_point(:,2), x_traj, y_traj);
+                            for i = 1:num_angles
+                                if in(i)
+                                    signed_distances(i) = -abs_distances(i); % 안쪽이면 -
+                                else
+                                    signed_distances(i) = abs_distances(i);  % 바깥쪽이면 +
                                 end
                             end
                             
-                            sigma_pc = deg2rad(sigma_pc_deg_set(best_fp_idx));
+                            % 거리가 +에서 -로 바뀌는(Boundary를 통과하는) 첫 지점 탐색
+                            sign_changed = false;
+                            best_idx = 1;
+                            
+                            for i = 2:num_angles
+                                if signed_distances(i-1) > 0 && signed_distances(i) <= 0
+                                    best_idx = i;
+                                    sign_changed = true;
+                                    break; % 가장 처음으로 부호 변화가 생긴 곳
+                                end
+                            end
+                            
+                            if sign_changed
+                                sigma_pc = deg2rad(obj.sigma_FRS_list(best_idx));
+                                mode_flag = 3; 
+                            else
+                                % 부호 변화가 없다면 절대 거리가 가장 작은 sigma_pc 채택
+                                [~, min_idx] = min(abs_distances);
+                                sigma_pc = deg2rad(obj.sigma_FRS_list(min_idx));
+                                mode_flag = 4;
+                            end
+                        else
+                            % Boundary 생성 실패 등 예외 상황
+                            sigma_pc = obj.sigma_ref_prev;
                             mode_flag = 4;
-                        end                        
+                        end                      
                     else
                         mode_flag = 1;
                     end
@@ -165,9 +181,23 @@ classdef RDPG_FRS < handle
             end
 
             % -----------------------------------------------------------
-            % [5단계] 유도 명령 계산
+            % [5단계] 유도 명령 계산 (Rate Limit 적용)
             % -----------------------------------------------------------
-            sigma_ref_filtered = sigma_pc;
+            
+            % 최대 허용 변화량 계산
+            max_delta = obj.rate_limit * obj.dt;
+            delta_sigma = sigma_pc - obj.sigma_ref_prev;
+            
+            % Rate limit 제한 걸기
+            if delta_sigma > max_delta
+                sigma_pc_limited = obj.sigma_ref_prev + max_delta;
+            elseif delta_sigma < -max_delta
+                sigma_pc_limited = obj.sigma_ref_prev - max_delta;
+            else
+                sigma_pc_limited = sigma_pc;
+            end
+            
+            sigma_ref_filtered = sigma_pc_limited;
             obj.sigma_ref_prev = sigma_ref_filtered;
             
             u_cmd = lambda_dot - obj.k * (sigma_p - sigma_ref_filtered);
