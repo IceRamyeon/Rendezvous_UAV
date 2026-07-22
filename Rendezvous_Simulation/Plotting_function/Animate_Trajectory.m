@@ -130,6 +130,8 @@ function Animate_Trajectory(cfg, sim_out)
     % Figure 3, 4, 5: Animation Setup[cite: 6]
     % =========================================================
     fig3 = figure('Position', [50 50 450 450], 'Name', '3. Target Centered', 'Theme', 'light'); grid on; axis equal; hold on;
+
+    % Intersection Region 그림
     ax3 = get(fig3, 'CurrentAxes');
     draw_Accumulated_IntersectRegion(ax3, V_p, acc_limit, r_f_max);
     
