@@ -1,5 +1,5 @@
-function [sim_results, sim_out] = Simulation_MaxAcc(cfg, theory)
-%% Simulation_MaxAcc.m
+function [sim_results, sim_out] = Simulation_main(cfg, theory)
+%% Simulation_main.m
 R2D = 180/pi;
 D2R = pi/180;
 
@@ -63,14 +63,17 @@ switch cfg.GUIDANCE_MODE
                                    cfg.r_vt, cfg.theta_vt_rad);
 
     case 'RDPG_MIN'
-        % 초기 리드각 계산
         init_sigma = current_psi_p - lambda_init;
         missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.a_min, cfg.r_allow, dt, init_sigma);
         
     case 'RDPG_r_f'
-        % 초기 리드각 계산
         init_sigma = current_psi_p - lambda_init;
         missile_guidance = RDPG_r_f(cfg.gain_k, cfg.limit_acc, cfg.r_f_escape, cfg.r_allow, dt, init_sigma); 
+
+    case 'RDPG_FRS'
+        init_sigma = current_psi_p - lambda_init;
+        sigma_pref = cfg.sigma_pref_deg;
+        missile_guidance = RDPG_FRS(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma, sigma_pref, cfg.t_for); 
     otherwise
         error('[오류] 알 수 없는 GUIDANCE_MODE.');
 end
@@ -91,7 +94,7 @@ for i = 1:num_steps
     V_c = -r_dot;
     lambda_dot = (V_t * sin(sigma_t) - V_p * sin(sigma_p)) / r;
     
-    lambda_dot_vt = NaN;
+    % lambda_dot_vt = NaN;
     x_vt_log = NaN;
     y_vt_log = NaN;
     r_f_log = NaN;
@@ -138,6 +141,13 @@ for i = 1:num_steps
 
         case 'RDPG_r_f'
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
+
+        case 'RDPG_FRS'
+            rel_x = current_Xp - current_Xt;
+            rel_y = current_Yp - current_Yt;
+            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(...
+            V_p, lambda_dot, sigma_p, r, sigma_t, V_t, current_psi_t, rel_x, rel_y);
+
         otherwise
             error('으헤.. 알 수 없는 GUIDANCE_MODE야, 선생.');
     end
