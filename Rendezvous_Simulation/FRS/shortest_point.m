@@ -10,7 +10,7 @@ T = 3;
 
 % Pursuer의 초기 위치 (Target 기준 프레임)
 x0 = -800;
-y0 = 500;
+y0 = 400;
 
 sigma_pc_deg_set = -170:10:180; 
 final_points = zeros(length(sigma_pc_deg_set), 2);
@@ -64,8 +64,9 @@ if ~isempty(x_traj)
     [x_unique, unique_idx] = unique(x_traj);
     y_unique = y_traj(unique_idx);
     
-    % Final Point 중 하나라도 Boundary Line 아래에 있는지 판별
-    is_any_below = false;
+    % Boundary Line 아래에 있는 점들의 인덱스를 저장할 빈 배열
+    below_idx_list = [];
+    
     for i = 1:size(final_points, 1)
         x_fp = final_points(i, 1);
         y_fp = final_points(i, 2);
@@ -73,20 +74,26 @@ if ~isempty(x_traj)
         % 'extrap' 제거: 경계선 x 데이터 범위를 벗어나면 NaN 반환
         y_bound = interp1(x_unique, y_unique, x_fp, 'linear');
         
-        % 계산된 y_bound가 존재하고(NaN이 아님), 점이 선보다 아래에 있을 때만 true
+        % 계산된 y_bound가 존재하고(NaN이 아님), 점이 선보다 아래에 있으면 리스트에 추가
         if ~isnan(y_bound) && (y_fp < y_bound)
-            is_any_below = true;
-            break;
+            below_idx_list = [below_idx_list, i];
         end
     end
     
-    if is_any_below
-        % 조건 1: Boundary line 밑에 점이 있을 경우
-        [~, best_fp_idx] = min(abs(sigma_pc_deg_set - sigma_pc_deg_traj));
+    if ~isempty(below_idx_list)
+        % 조건 1: Boundary line 밑에 점이 하나라도 있을 경우
+        % "밑에 있는 점들 중에서만" sigma_pc_deg_traj(62.6도)와 가장 차이가 작은 점 선택
+        below_sigma_diffs = abs(sigma_pc_deg_set(below_idx_list) - sigma_pc_deg_traj);
+        [~, min_diff_idx] = min(below_sigma_diffs);
+        
+        % best_fp_idx를 전체 인덱스 기준으로 다시 매핑
+        best_fp_idx = below_idx_list(min_diff_idx);
+        
+        % 선택된 점과 궤적 상의 최단 거리 및 인덱스 계산 (시각화용)
         distances = sqrt((x_traj - final_points(best_fp_idx, 1)).^2 + (y_traj - final_points(best_fp_idx, 2)).^2);
         [min_dist, best_traj_idx] = min(distances);
     else
-        % 조건 2: 모든 점이 Boundary line 위에 있을 경우 (지금 사진의 상황)
+        % 조건 2: 모든 점이 Boundary line 위에 있을 경우
         for i = 1:size(final_points, 1)
             distances = sqrt((x_traj - final_points(i, 1)).^2 + (y_traj - final_points(i, 2)).^2);
             [local_min_dist, local_min_idx] = min(distances);
