@@ -6,11 +6,11 @@ Vp = 20;           %[cite: 7]
 Vt = 20;           %[cite: 7]
 gamma_t_deg = 90;       %[cite: 7]
 gamma_t = deg2rad(gamma_t_deg); %[cite: 7]
-T = 10;             %[cite: 7]
+T = 3;             %[cite: 7]
 
 % Pursuer의 초기 위치 (Target 기준 프레임)
 x0 = -800; %[cite: 7]
-y0 = 900; %[cite: 7]
+y0 = 500; %[cite: 7]
 
 sigma_pc_deg_set = -180:10:180; %[cite: 7]
 final_points = zeros(length(sigma_pc_deg_set), 2); %[cite: 7]
@@ -37,7 +37,7 @@ sigma_pc_deg_traj = 62.6; %[cite: 7]
 sigma_pc_rad_traj = deg2rad(sigma_pc_deg_traj); %[cite: 7]
 
 % 해석적 궤적 계산[cite: 7]
-sigma_t_traj = linspace(-sigma_pc_rad_traj, pi - sigma_pc_rad_traj - 1e-5, 2000); %[cite: 7]
+sigma_t_traj = linspace(-sigma_pc_rad_traj, pi - sigma_pc_rad_traj - 1e-5, 20000); %[cite: 7]
 denominator = cos((sigma_t_traj + sigma_pc_rad_traj) / 2).^2; %[cite: 7]
 r_traj = r_f * cos(sigma_pc_rad_traj)^2 ./ denominator; %[cite: 7]
 r_traj = min(r_traj, max_r_plot_limit); %[cite: 7]

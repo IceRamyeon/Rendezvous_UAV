@@ -13,7 +13,7 @@ x0 = -300;
 y0 = 400;
 
 % 시그마_pc (Look angle / Deviation angle) 범위: 0도 ~ 90도
-sigma_pc_deg = -170:20:180; 
+sigma_pc_deg = -170:10:180; 
 final_points = zeros(length(sigma_pc_deg), 2);
 
 figure('Theme','light'); hold on; grid on;

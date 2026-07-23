@@ -10,7 +10,7 @@ T = 3;
 
 % Pursuer의 초기 위치 (Target 기준 프레임)
 x0 = -800;
-y0 = 800;
+y0 = 500;
 
 sigma_pc_deg_set = -170:10:180; 
 final_points = zeros(length(sigma_pc_deg_set), 2);
@@ -28,7 +28,7 @@ for i = 1:length(sigma_pc_deg_set)
     final_points(i, :) = Y(end, :);
 end
 
-%% 2. 특정 궤적 (sigma_pc = 62.6도) 계산
+%% 2. Boundary Line (sigma_pc = 62.6도) 계산
 r_f = 2.0;         
 r_target_radius = 2.0;     
 max_r_plot_limit = 20000;  
@@ -36,8 +36,8 @@ max_r_plot_limit = 20000;
 sigma_pc_deg_traj = 62.6;
 sigma_pc_rad_traj = deg2rad(sigma_pc_deg_traj);
 
-% 해석적 궤적 계산
-sigma_t_traj = linspace(-sigma_pc_rad_traj, pi - sigma_pc_rad_traj - 1e-5, 2000);
+% 해석적 경계선 계산
+sigma_t_traj = linspace(-sigma_pc_rad_traj, pi - sigma_pc_rad_traj - 1e-5, 20000);
 denominator = cos((sigma_t_traj + sigma_pc_rad_traj) / 2).^2;
 r_traj = r_f * cos(sigma_pc_rad_traj)^2 ./ denominator;
 r_traj = min(r_traj, max_r_plot_limit);
@@ -54,23 +54,48 @@ if ~isempty(plot_r)
     y_traj = plot_r .* sin(plot_angle);
 end
 
-%% 3. 두 Set(Final Points vs 62.6도 궤적) 사이의 최단 거리 탐색
+%% 3. 두 Set(Final Points vs 62.6도 경계선) 사이의 최단 거리 탐색 및 조건 판별
 min_dist = inf;
 best_fp_idx = 1;
 best_traj_idx = 1;
 
 if ~isempty(x_traj)
+    % interp1을 사용하기 위해 x_traj의 중복 값을 제거하고 오름차순 정렬
+    [x_unique, unique_idx] = unique(x_traj);
+    y_unique = y_traj(unique_idx);
+    
+    % Final Point 중 하나라도 Boundary Line 아래에 있는지 판별
+    is_any_below = false;
     for i = 1:size(final_points, 1)
-        % 하나의 Final Point와 궤적 상의 모든 점 사이의 거리 계산
-        distances = sqrt((x_traj - final_points(i, 1)).^2 + (y_traj - final_points(i, 2)).^2);
+        x_fp = final_points(i, 1);
+        y_fp = final_points(i, 2);
         
-        [local_min_dist, local_min_idx] = min(distances);
+        % 'extrap' 제거: 경계선 x 데이터 범위를 벗어나면 NaN 반환
+        y_bound = interp1(x_unique, y_unique, x_fp, 'linear');
         
-        % 전체 최솟값 업데이트
-        if local_min_dist < min_dist
-            min_dist = local_min_dist;
-            best_fp_idx = i;
-            best_traj_idx = local_min_idx;
+        % 계산된 y_bound가 존재하고(NaN이 아님), 점이 선보다 아래에 있을 때만 true
+        if ~isnan(y_bound) && (y_fp < y_bound)
+            is_any_below = true;
+            break;
+        end
+    end
+    
+    if is_any_below
+        % 조건 1: Boundary line 밑에 점이 있을 경우
+        [~, best_fp_idx] = min(abs(sigma_pc_deg_set - sigma_pc_deg_traj));
+        distances = sqrt((x_traj - final_points(best_fp_idx, 1)).^2 + (y_traj - final_points(best_fp_idx, 2)).^2);
+        [min_dist, best_traj_idx] = min(distances);
+    else
+        % 조건 2: 모든 점이 Boundary line 위에 있을 경우 (지금 사진의 상황)
+        for i = 1:size(final_points, 1)
+            distances = sqrt((x_traj - final_points(i, 1)).^2 + (y_traj - final_points(i, 2)).^2);
+            [local_min_dist, local_min_idx] = min(distances);
+            
+            if local_min_dist < min_dist
+                min_dist = local_min_dist;
+                best_fp_idx = i;
+                best_traj_idx = local_min_idx;
+            end
         end
     end
 end
