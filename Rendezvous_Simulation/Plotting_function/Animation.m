@@ -157,7 +157,28 @@ function Animate_Trajectory(cfg, sim_out)
 
     % +g limit 표시
     h_glimit_fig3 = plot(nan, nan, 'r', 'LineWidth', 1.5);
-    
+
+    % FRS일 때 point 표시
+    if isfield(cfg, 'GUIDANCE_MODE') && strcmp(cfg.GUIDANCE_MODE, 'RDPG_FRS')
+        max_pts = 0;
+        if isfield(sim_out, 'point_value_hist')
+            for k = 1:length(sim_out.point_value_hist)
+                if ~isempty(sim_out.point_value_hist{k})
+                    max_pts = size(sim_out.point_value_hist{k}, 1);
+                    break;
+                end
+            end
+        end
+        h_frs_lines = gobjects(max_pts, 1);
+        h_frs_pts = gobjects(max_pts, 1);
+        for k = 1:max_pts
+            % 타겟과 포인트를 잇는 검은색 선분
+            h_frs_lines(k) = plot(ax3, nan, nan, 'k-', 'LineWidth', 1, 'HandleVisibility', 'off');
+            % 포인트 위치 표시용 동그라미 (초기값 검은색)
+            h_frs_pts(k) = plot(ax3, nan, nan, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 5, 'HandleVisibility', 'off');
+        end
+    end
+
     h_traj_relT = animatedline('Color', 'b', 'LineWidth', 1.5);
     h_arrow_T_fixed = patch('Vertices', nan(4,2), 'Faces', [1 2 3 4], 'FaceColor', 'r'); 
     h_arrow_P_rel   = patch('Vertices', nan(4,2), 'Faces', [1 2 3 4], 'FaceColor', 'b'); 
@@ -223,6 +244,48 @@ function Animate_Trajectory(cfg, sim_out)
             else
                 set(h_glimit_fig3, 'XData', X_g, 'YData', Y_g);
             end
+
+            % 실시간 FRS 탐색 포인트 및 선분 업데이트
+            if isfield(cfg, 'GUIDANCE_MODE') && strcmp(cfg.GUIDANCE_MODE, 'RDPG_FRS')
+                if isfield(sim_out, 'point_value_hist') && i <= length(sim_out.point_value_hist)
+                    curr_pts = sim_out.point_value_hist{i};
+                    if ~isempty(curr_pts) && size(curr_pts, 2) >= 4
+                        for k = 1:length(h_frs_pts)
+                            if k <= size(curr_pts, 1)
+                                % RDPG_FRS에서 넘어온 좌표는 Global Relative이므로 Fig 3(Target frame)에 맞게 회전
+                                raw_x = curr_pts(k, 3);
+                                raw_y = curr_pts(k, 4);
+                                pos_pt_in_Tframe = R_mat_T * [raw_x; raw_y];
+                                
+                                % 1) 선분 업데이트 (Target(0,0)에서 각 point까지)
+                                set(h_frs_lines(k), ...
+                                    'XData', [pos_P_in_Tframe(1), pos_pt_in_Tframe(1)], ...
+                                    'YData', [pos_P_in_Tframe(2), pos_pt_in_Tframe(2)]);
+                                
+                                % 2) 포인트 업데이트 및 채택 여부(2열)에 따른 색상 변경
+                                set(h_frs_pts(k), 'XData', pos_pt_in_Tframe(1), 'YData', pos_pt_in_Tframe(2));
+                                if curr_pts(k, 2) == 1
+                                    % 채택된 각도는 빨간색
+                                    set(h_frs_pts(k), 'Color', 'r', 'MarkerFaceColor', 'r');
+                                else
+                                    % 채택 안 된 각도는 검은색
+                                    set(h_frs_pts(k), 'Color', 'k', 'MarkerFaceColor', 'k');
+                                end
+                            else
+                                set(h_frs_lines(k), 'XData', nan, 'YData', nan);
+                                set(h_frs_pts(k), 'XData', nan, 'YData', nan);
+                            end
+                        end
+                    else
+                        % 해당 스텝에 데이터가 없으면 화면에서 숨김 처리
+                        for k = 1:length(h_frs_pts)
+                            set(h_frs_lines(k), 'XData', nan, 'YData', nan);
+                            set(h_frs_pts(k), 'XData', nan, 'YData', nan);
+                        end
+                    end
+                end
+            end
+            % ========================================================
 
             % --- Fig 4 ---
             rot_ang_P = (pi/2) - current_psi_p; 

@@ -18,11 +18,12 @@ cfg.GUIDANCE_MODE = 'RDPG_FRS';
 
 % [초기 조건 입력] 
 % Pursuer 상대 위치 및 리드각
-cfg.r_pursuer = 700;               % Target 기준 Pursuer의 초기 상대거리 [m]
+cfg.r_pursuer = 400;               % Target 기준 Pursuer의 초기 상대거리 [m]
 cfg.theta_pursuer = -40;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
 RDPG_FLAG = 0;                  % 1 : 초기부터 Reachability based lead angle 사용, 0 : 수동으로 초기 리드각 설정
 sigma_p0_deg = 0;              % RDPG_FLAG = 0이면 수동으로 초기 리드각 설정 가능. RDPG_FLAG = 1일 경우 sigma_p0_deg = [];
 sigma_p0_rad = deg2rad(sigma_p0_deg);
+cfg.rate_limit_deg = 30;                % Pursuer Lead Angle 수정 최대변화율
 
 % Target 초기 위치 및 자세
 cfg.Xt_input_km = 0.0;      % Inertial Frame Target의 x좌표[km]
@@ -31,7 +32,7 @@ cfg.psi_ti_deg = 90;        % Inertial Frame Target Heading Angle[deg]
 
 % 시뮬레이션 결과 저장
 cfg.auto_save = 0;          % Simulation 결과 자동저장 (1 : 자동 저장, 0 : 저장 안 함)
-target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0720 랩미팅\Sim4.3\RDPG_MIN\50'; % 저장 경로
+target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260724 미팅준비\실험결과\0723_2'; % 저장 경로
 cfg.save_dir = fullfile(target_path);
 my_filename = sprintf('RDPG_MIN_%.1f', -cfg.theta_pursuer); % 최종 results들을 담은 파일 이름
 
@@ -47,10 +48,9 @@ cfg.a_min = 0.1;                        % Fail-Safe시 escape a_min [G]
 cfg.r_f_escape = 200;                   % Fail-Safe시 escape r_f
 
 % RDPG_FRS 관련 파라미터
-cfg.t_for = 10;
+cfg.t_for = 2;
 cfg.sigma_pref_deg = 62.6;
 cfg.sigma_FRS_list = -170: 10: 180;
-cfg.rate_limit_deg = 1;
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;                    % Time step

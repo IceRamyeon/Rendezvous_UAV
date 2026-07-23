@@ -2,10 +2,11 @@ classdef RDPG_FRS < handle
     properties
         k, max_acc, r_f_max, dt
         sigma_ref_prev
-        sigma_pref       % 62.6도와 같은 선호 각도
-        t_for            % Fail-Safe 탐색을 위한 전방향 시뮬레이션 시간
-        sigma_FRS_list   % Fail-Safe 탐색을 위한 sigma_pc 각도 리스트
+        sigma_pref          % 62.6도와 같은 선호 각도[rad]
+        t_for               % Fail-Safe 탐색을 위한 전방향 시뮬레이션 시간
+        sigma_FRS_list      % Fail-Safe 탐색을 위한 sigma_pc 각도 리스트[deg]
         rate_limit          % Rate Limit (rad/s)
+        is_latched          % sigma_pc 확정    
     end
     
     methods
@@ -19,6 +20,7 @@ classdef RDPG_FRS < handle
             obj.t_for = t_for; 
             obj.sigma_FRS_list = sigma_FRS_list; 
             obj.rate_limit = rate_limit; % Rate limit 초기화
+            obj.is_latched = false(1, length(sigma_FRS_list));
         end
 
         function [x_traj, y_traj] = get_Boundary(obj, sigma_pref)
@@ -26,12 +28,10 @@ classdef RDPG_FRS < handle
             r_f = obj.r_f_max;
             max_r_plot_limit = 20000;  
 
-            sigma_pc_rad_traj = sigma_pref;
-
             % 해석적 궤적 계산
-            sigma_t_traj = linspace(-sigma_pc_rad_traj, pi - sigma_pc_rad_traj - 1e-5, 2000);
-            denominator = cos((sigma_t_traj + sigma_pc_rad_traj) / 2).^2;
-            r_traj = r_f * cos(sigma_pc_rad_traj)^2 ./ denominator;
+            sigma_t_traj = linspace(-sigma_pref, pi - sigma_pref - 1e-5, 2000);
+            denominator = cos((sigma_t_traj + sigma_pref) / 2).^2;
+            r_traj = r_f * cos(sigma_pref)^2 ./ denominator;
             r_traj = min(r_traj, max_r_plot_limit);
 
             valid_idx = isfinite(r_traj) & (r_traj >= r_f);
@@ -48,8 +48,12 @@ classdef RDPG_FRS < handle
             end
         end
 
-        function [acc_cmd, sigma_ref_filtered, mode_flag] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t, V_t, gamma_t, x_curr, y_curr)
+        function [acc_cmd, sigma_ref_filtered, mode_flag, point_value] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t, V_t, gamma_t, x_curr, y_curr)
             
+            % point_value 초기화 (Fail-Safe 모드가 아닐 때 에러 방지용)
+            num_angles = length(obj.sigma_FRS_list);
+            point_value = zeros(num_angles, 4);
+
             % =======================================================
             % Dynamic Epsilon 스케줄링 로직
             % =======================================================
@@ -87,6 +91,7 @@ classdef RDPG_FRS < handle
             if r >= r_contour_min && r <= r_contour_max
                 sigma_pc = sigma_p;
                 mode_flag = 0; 
+                obj.is_latched(:) = false; % 전체 배열 초기화
             else
                 % -------------------------------------------------------
                 % [3단계] Unsafe 시 새로운 sigma_pc 탐색
@@ -102,12 +107,14 @@ classdef RDPG_FRS < handle
                     r_f_compare = (C_max * V_p^2) / (2 * obj.max_acc);
                     
                     if r_f_compare > obj.r_f_max
+
                         % -------------------------------------------------------
                         % [4단계] Fail-Safe 탈출
                         % -------------------------------------------------------
+
+                        % Target frame에서 일정 sigma_pc을 유지했을 때 t_for 이후 예상 위치를 탐색
                         [x_traj, y_traj] = obj.get_Boundary(obj.sigma_pref);
                         
-                        num_angles = length(obj.sigma_FRS_list);
                         Distance_point = zeros(num_angles, 2); 
                         signed_distances = zeros(num_angles, 1);
                         abs_distances = zeros(num_angles, 1);
@@ -145,34 +152,52 @@ classdef RDPG_FRS < handle
                                 end
                             end
                             
+                            % point_value 1열에 부호가 포함된 거리 저장
+                            point_value(:, 1) = signed_distances;
+                            point_value(:, 3:4) = Distance_point;
+
                             % 거리가 +에서 -로 바뀌는(Boundary를 통과하는) 첫 지점 탐색
-                            sign_changed = false;
-                            best_idx = 1;
-                            
+                            % 1) 현재 스텝에서 Boundary 안으로 들어온 각도들에 true 부여
+                            if signed_distances(1) <= 0
+                                obj.is_latched(1) = true;
+                            end
                             for i = 2:num_angles
                                 if signed_distances(i-1) > 0 && signed_distances(i) <= 0
-                                    best_idx = i;
-                                    sign_changed = true;
-                                    break; % 가장 처음으로 부호 변화가 생긴 곳
+                                    obj.is_latched(i) = true;
                                 end
                             end
                             
-                            if sign_changed
+                            % 2) 지금까지 is_latched가 true로 누적된 인덱스들 찾기
+                            latched_indices = find(obj.is_latched);
+                            
+                            if ~isempty(latched_indices)
+                                % 누적된 후보군 배열 안에서 obj.sigma_pref 와의 차이가 제일 작은 인덱스 찾기
+                                candidate_angles_rad = deg2rad(obj.sigma_FRS_list(latched_indices));
+                                diffs = abs(candidate_angles_rad - obj.sigma_pref);
+                                [~, min_diff_pos] = min(diffs);
+                                
+                                best_idx = latched_indices(min_diff_pos);
+                                
                                 sigma_pc = deg2rad(obj.sigma_FRS_list(best_idx));
                                 mode_flag = 3; 
+                                point_value(best_idx, 2) = 1; 
                             else
-                                % 부호 변화가 없다면 절대 거리가 가장 작은 sigma_pc 채택
+                                % 아직 아무것도 누적 안 된 경우 (후보가 없음)
                                 [~, min_idx] = min(abs_distances);
                                 sigma_pc = deg2rad(obj.sigma_FRS_list(min_idx));
                                 mode_flag = 4;
+                                point_value(min_idx, 2) = 1;
                             end
                         else
                             % Boundary 생성 실패 등 예외 상황
                             sigma_pc = obj.sigma_ref_prev;
                             mode_flag = 4;
+                            % 거리를 알 수 없으므로 거리는 inf로 처리
+                            point_value(:, 1) = inf;
                         end                      
                     else
                         mode_flag = 1;
+                        obj.is_latched(:) = false; % Safe 판정이면 고정 해제
                     end
                 catch
                     mode_flag = 2;

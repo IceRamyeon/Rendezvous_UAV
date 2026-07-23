@@ -64,7 +64,8 @@ switch cfg.GUIDANCE_MODE
 
     case 'RDPG_MIN'
         init_sigma = current_psi_p - lambda_init;
-        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.a_min, cfg.r_allow, dt, init_sigma);
+        rate_limit_rad = cfg.rate_limit_deg;
+        missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.a_min, cfg.r_allow, dt, init_sigma, rate_limit_rad);
         
     case 'RDPG_r_f'
         init_sigma = current_psi_p - lambda_init;
@@ -72,16 +73,19 @@ switch cfg.GUIDANCE_MODE
 
     case 'RDPG_FRS'
         init_sigma = current_psi_p - lambda_init;
-        sigma_pref = deg2rad(cfg.sigma_pref_deg);
-        rate_limit = deg2rad(cfg.rate_limit_deg);
+        sigma_pref_rad = deg2rad(cfg.sigma_pref_deg);
+        rate_limit_rad = deg2rad(cfg.rate_limit_deg);
         missile_guidance = RDPG_FRS(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma, ...
-        sigma_pref, cfg.t_for, cfg.sigma_FRS_list, rate_limit); 
+        sigma_pref_rad, cfg.t_for, cfg.sigma_FRS_list, rate_limit_rad); 
     otherwise
         error('[오류] 알 수 없는 GUIDANCE_MODE.');
 end
 
 num_steps = length(time);
 hist_state = zeros(17, num_steps); 
+
+% RDPG_FRS 용 cell 초기화
+point_value_hist = cell(1, num_steps);
     
 % 시뮬레이션 연산[cite: 4]
 for i = 1:num_steps
@@ -101,6 +105,8 @@ for i = 1:num_steps
     y_vt_log = NaN;
     r_f_log = NaN;
     
+    current_point_value = [];
+
     switch cfg.GUIDANCE_MODE
         case 'RDPG_ACC'
             [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
@@ -147,7 +153,7 @@ for i = 1:num_steps
         case 'RDPG_FRS'
             rel_x = current_Xp - current_Xt;
             rel_y = current_Yp - current_Yt;
-            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(...
+            [acc_cmd, sigma_ref_new, mode_flag, current_point_value] = missile_guidance.compute_command(...
             V_p, lambda_dot, sigma_p, r, sigma_t, V_t, current_psi_t, rel_x, rel_y);
 
         otherwise
@@ -167,11 +173,13 @@ for i = 1:num_steps
     sigma_p; sigma_t; V_c; acc_cmd; sigma_ref_new; mode_flag; current_Xp; current_Yp; ...
     current_Xt; current_Yt; x_vt_log; y_vt_log; ...
     r_f_log];
+    point_value_hist{i} = current_point_value;
     
     heading_diff_deg = abs(wrapTo180((current_psi_p - current_psi_t) * R2D));
     if r <= r_allow && heading_diff_deg < th_psi_deg
         if cfg.stop_condition == 1
             hist_state = hist_state(:, 1:i);
+            point_value_hist = point_value_hist(1:i);
             time = time(1:i);
             break;
         end
@@ -196,6 +204,7 @@ sim_results.a_sim_at_max = a_sim_at_max;
 % 외부 플롯 호환용 데이터 팩
 sim_out.time = time;
 sim_out.hist_state = hist_state;
+sim_out.point_value_hist = point_value_hist;
 sim_out.init.Xp_i = Xp_i; sim_out.init.Yp_i = Yp_i;
 sim_out.init.Xt_i = Xt_i; sim_out.init.Yt_i = Yt_i;
 sim_out.init.psi_p = psi_p; sim_out.init.psi_t = psi_t;
@@ -206,7 +215,7 @@ sim_out.param.At_constant = cfg.At_constant;
 
 %% 플롯 함수 호출
 fprintf('\n>>> 결과 시각화 모듈 실행... <<<\n');
-Animate_Trajectory(cfg, sim_out);
+Animation(cfg, sim_out);
 Plot_Static_Results(cfg, sim_out);
 Plot_MaxAccPoint(cfg, sim_out, theory); 
 

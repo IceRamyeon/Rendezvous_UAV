@@ -3,16 +3,18 @@ classdef RDPG_MIN < handle
         k, max_acc, r_f_max, dt
         sigma_ref_prev 
         a_min % Fail-Safe 탈출을 위한 가속도
+        rate_limit
     end
     
     methods
-        function obj = RDPG_MIN(k_gain, limit_G, min_G, r_f_max, dt, init_sigma_rad)
+        function obj = RDPG_MIN(k_gain, limit_G, min_G, r_f_max, dt, init_sigma_rad, rate_limit)
             obj.k = k_gain;
             obj.max_acc = limit_G * 9.81;
             obj.a_min = min_G * 9.81;
             obj.r_f_max = r_f_max; 
             obj.dt = dt;
             obj.sigma_ref_prev = init_sigma_rad;
+            obj.rate_limit = rate_limit; % Rate limit 초기화
         end
 
         function [acc_cmd, sigma_ref_filtered, mode_flag, r_f_log] = compute_command(obj, V_p, lambda_dot, sigma_p, r, sigma_t)
@@ -112,7 +114,20 @@ classdef RDPG_MIN < handle
             % -----------------------------------------------------------
             % [5단계] 유도 명령 계산
             % -----------------------------------------------------------
-            sigma_ref_filtered = sigma_pc;
+
+            % rate limit 적용
+            max_delta = obj.rate_limit * obj.dt;
+            delta_sigma = sigma_pc - obj.sigma_ref_prev;
+
+            if delta_sigma > max_delta
+                sigma_pc_limited = obj.sigma_ref_prev + max_delta;
+            elseif delta_sigma < -max_delta
+                sigma_pc_limited = obj.sigma_ref_prev - max_delta;
+            else
+                sigma_pc_limited = sigma_pc;
+            end
+
+            sigma_ref_filtered = sigma_pc_limited;
             obj.sigma_ref_prev = sigma_ref_filtered;
             
             u_cmd = lambda_dot - obj.k * (sigma_p - sigma_ref_filtered);
