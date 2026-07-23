@@ -28,13 +28,12 @@ classdef RDPG_FRS < handle
             r_f = obj.r_f_max;
             max_r_plot_limit = 20000;  
 
-            % 해석적 궤적 계산
-            sigma_t_traj = linspace(-sigma_pref, pi - sigma_pref - 1e-5, 2000);
+            sigma_t_traj = linspace(-sigma_pref, pi - sigma_pref - 1e-5, 10000);
             denominator = cos((sigma_t_traj + sigma_pref) / 2).^2;
             r_traj = r_f * cos(sigma_pref)^2 ./ denominator;
             r_traj = min(r_traj, max_r_plot_limit);
 
-            valid_idx = isfinite(r_traj) & (r_traj >= r_f);
+            valid_idx = isfinite(r_traj) & (r_traj >= 100);
             plot_sigma_t = sigma_t_traj(valid_idx);
             plot_r = r_traj(valid_idx);
 
@@ -182,7 +181,8 @@ classdef RDPG_FRS < handle
                                 mode_flag = 3; 
                                 point_value(best_idx, 2) = 1; 
                             else
-                                % 아직 아무것도 누적 안 된 경우 (후보가 없음)
+                                % 조건 2: 경계선 아래로 들어간 점이 하나도 없는 경우
+                                % 전체 후보군 중에서 물리적 거리(abs_distances)가 제일 짧은 각도 선택
                                 [~, min_idx] = min(abs_distances);
                                 sigma_pc = deg2rad(obj.sigma_FRS_list(min_idx));
                                 mode_flag = 4;
