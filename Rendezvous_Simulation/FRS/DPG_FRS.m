@@ -6,14 +6,14 @@ Vp = 20;           % Pursuer의 속도
 Vt = 20;           % Target의 속도
 gamma_t_deg = 90;       % Target의 이동 방향 (라디안, x축 기준)
 gamma_t = deg2rad(gamma_t_deg);
-T = 10;             % 시뮬레이션 할 일정 시간 (초)
+T = 3;             % 시뮬레이션 할 일정 시간 (초)
 
 % Pursuer의 초기 위치 (Target 기준 프레임)
-x0 = -1000;
-y0 = 1000;
+x0 = -300;
+y0 = 400;
 
 % 시그마_pc (Look angle / Deviation angle) 범위: 0도 ~ 90도
-sigma_pc_deg = -170:10:180; 
+sigma_pc_deg = -170:20:180; 
 final_points = zeros(length(sigma_pc_deg), 2);
 
 figure('Theme','light'); hold on; grid on;
@@ -42,13 +42,15 @@ end
 
 % --- Final points 및 마커 표시 ---
 % Final points들을 이어주는 선
-plot(final_points(:,1), final_points(:,2), 'r-o', 'LineWidth', 2, 'MarkerFaceColor', 'r', 'DisplayName', 'Final Points Set');
+plot(final_points(:,1), final_points(:,2), 'r-o', 'LineWidth', 0.5, 'MarkerFaceColor', 'r', 'DisplayName', 'Final Points Set');
 
 % 타겟 위치 (원점) 표시
 plot(0, 0, 'k^', 'MarkerSize', 10, 'MarkerFaceColor', 'k', 'DisplayName', 'Target (0,0)');
 
 xlabel('X Position'); 
 ylabel('Y Position');
-title('DPG Trajectories & Final Points in Target Reference Frame');
-legend('show', 'Location', 'bestoutside');
 axis equal;
+
+r = sqrt(x0^2 + y0^2);
+xlim([-r 10]);
+ylim([-0.1*r 0.9*r+10]);

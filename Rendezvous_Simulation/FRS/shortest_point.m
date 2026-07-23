@@ -6,7 +6,7 @@ Vp = 20;
 Vt = 20;           
 gamma_t_deg = 90;       
 gamma_t = deg2rad(gamma_t_deg);
-T = 10;             
+T = 3;             
 
 % Pursuer의 초기 위치 (Target 기준 프레임)
 x0 = -800;
