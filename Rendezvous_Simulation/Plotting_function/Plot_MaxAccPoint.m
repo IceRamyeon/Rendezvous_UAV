@@ -40,7 +40,7 @@ function Plot_MaxAccPoint(cfg, sim_out, theory)
     % 2m 미만 영역은 NaN 처리해서 배경 비우기
     Acc_cmd_grid(R_grid < r_target_radius) = NaN;
     
-    fig = figure('Name', 'Max Acc Point Validation', 'Theme', 'light', 'Position', [100, 100, 800, 700]);
+    fig = figure('Theme', 'light', 'Position', [100, 100, 800, 700]);
     ax = gca; 
     hold(ax, 'on'); grid(ax, 'on'); axis(ax, 'equal');
     
