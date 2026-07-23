@@ -1,4 +1,4 @@
-function Animate_Trajectory(cfg, sim_out)
+function Animation(cfg, sim_out)
     R2D = 180/pi;
     D2R = pi/180;
     arrow_scale = 7;
