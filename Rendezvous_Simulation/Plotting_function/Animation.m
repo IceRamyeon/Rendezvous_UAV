@@ -3,7 +3,7 @@ function Animate_Trajectory(cfg, sim_out)
     D2R = pi/180;
     arrow_scale = 7;
     
-    % 데이터 언패킹[cite: 6]
+    % 데이터 언패킹
     time = sim_out.time;
     hist_state = sim_out.hist_state;
     Xp_i = sim_out.init.Xp_i; Yp_i = sim_out.init.Yp_i;
@@ -16,7 +16,7 @@ function Animate_Trajectory(cfg, sim_out)
     
     V_p = sim_out.param.V_p; V_t = sim_out.param.V_t;
 
-    % cfg 파라미터에서 Region 계산용 변수 가져오기 (없으면 기본값 세팅)[cite: 6]
+    % cfg 파라미터에서 Region 계산용 변수 가져오기 (없으면 기본값 세팅)
     if isfield(cfg, 'limit_acc'), acc_limit = cfg.limit_acc; else acc_limit = 9.81; end
     if isfield(cfg, 'r_allow'), r_f_max = cfg.r_allow; else r_f_max = 2.0; end
     
@@ -29,7 +29,7 @@ function Animate_Trajectory(cfg, sim_out)
     sigma_t_deg_txt = (psi_t - lambda_init) * R2D;
 
     % =========================================================
-    % Figure 1: Global Inertial Frame (Initial)[cite: 6]
+    % Figure 1: Global Inertial Frame (Initial)
     % =========================================================
     figure(1); set(gcf, 'Position', [50 300 500 500], 'Theme', 'light');
     hold on; grid on; axis equal;
@@ -51,7 +51,7 @@ function Animate_Trajectory(cfg, sim_out)
     legend('LOS', 'Pursuer Vel', 'Target Vel', 'Location', 'best');
 
     % =========================================================
-    % Figure 2: Target Body Frame (Initial & Static Regions)[cite: 6]
+    % Figure 2: Target Body Frame (Initial & Static Regions)
     % =========================================================
     figure(2); set(gcf, 'Position', [560 300 500 500], 'Theme', 'light');
     hold on; grid on; axis equal; xlim([-r_i*1.8, r_i*0.2]); ylim([-r_i*0.1, r_i*1.9]);
@@ -127,7 +127,7 @@ function Animate_Trajectory(cfg, sim_out)
     legend('Location', 'best');
 
     % =========================================================
-    % Figure 3, 4, 5: Animation Setup[cite: 6]
+    % Figure 3, 4, 5: Animation Setup
     % =========================================================
     fig3 = figure('Position', [50 50 450 450], 'Name', '3. Target Centered', 'Theme', 'light'); grid on; axis equal; hold on;
 
@@ -169,11 +169,12 @@ function Animate_Trajectory(cfg, sim_out)
                 end
             end
         end
-        h_frs_lines = gobjects(max_pts, 1);
+        % h_frs_lines = gobjects(max_pts, 1); % 주석 처리: 선분 객체 배열 생성 안 함
         h_frs_pts = gobjects(max_pts, 1);
         for k = 1:max_pts
-            % 타겟과 포인트를 잇는 검은색 선분
-            h_frs_lines(k) = plot(ax3, nan, nan, 'k-', 'LineWidth', 1, 'HandleVisibility', 'off');
+            % 타겟과 포인트를 잇는 검은색 선분 (주석 처리)
+            % h_frs_lines(k) = plot(ax3, nan, nan, 'k-', 'LineWidth', 1, 'HandleVisibility', 'off');
+            
             % 포인트 위치 표시용 동그라미 (초기값 검은색)
             h_frs_pts(k) = plot(ax3, nan, nan, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 5, 'HandleVisibility', 'off');
         end
@@ -257,10 +258,10 @@ function Animate_Trajectory(cfg, sim_out)
                                 raw_y = curr_pts(k, 4);
                                 pos_pt_in_Tframe = R_mat_T * [raw_x; raw_y];
                                 
-                                % 1) 선분 업데이트 (Target(0,0)에서 각 point까지)
-                                set(h_frs_lines(k), ...
-                                    'XData', [pos_P_in_Tframe(1), pos_pt_in_Tframe(1)], ...
-                                    'YData', [pos_P_in_Tframe(2), pos_pt_in_Tframe(2)]);
+                                % 1) 선분 업데이트 (Target(0,0)에서 각 point까지) (주석 처리됨)
+                                % set(h_frs_lines(k), ...
+                                %     'XData', [pos_P_in_Tframe(1), pos_pt_in_Tframe(1)], ...
+                                %     'YData', [pos_P_in_Tframe(2), pos_pt_in_Tframe(2)]);
                                 
                                 % 2) 포인트 업데이트 및 채택 여부(2열)에 따른 색상 변경
                                 set(h_frs_pts(k), 'XData', pos_pt_in_Tframe(1), 'YData', pos_pt_in_Tframe(2));
@@ -272,14 +273,14 @@ function Animate_Trajectory(cfg, sim_out)
                                     set(h_frs_pts(k), 'Color', 'k', 'MarkerFaceColor', 'k');
                                 end
                             else
-                                set(h_frs_lines(k), 'XData', nan, 'YData', nan);
+                                % set(h_frs_lines(k), 'XData', nan, 'YData', nan); % (주석 처리됨)
                                 set(h_frs_pts(k), 'XData', nan, 'YData', nan);
                             end
                         end
                     else
                         % 해당 스텝에 데이터가 없으면 화면에서 숨김 처리
                         for k = 1:length(h_frs_pts)
-                            set(h_frs_lines(k), 'XData', nan, 'YData', nan);
+                            % set(h_frs_lines(k), 'XData', nan, 'YData', nan); % (주석 처리됨)
                             set(h_frs_pts(k), 'XData', nan, 'YData', nan);
                         end
                     end
