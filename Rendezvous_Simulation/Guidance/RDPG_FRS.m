@@ -23,8 +23,8 @@ classdef RDPG_FRS < handle
             obj.is_latched = false(1, length(sigma_FRS_list));
         end
 
-        function [x_traj, y_traj] = get_Boundary(obj, sigma_pref)
-            % 주어진 sigma_pref로 One_sigma_pc.m의 Boundary line의 점들 생성 및 저장   
+        function [x_traj, y_traj] = get_Boundary(obj, sigma_pref, gamma_t)
+            % 주어진 sigma_pref와 gamma_t로 Boundary line의 점들 생성 및 저장   
             r_f = obj.r_f_max;
             max_r_plot_limit = 20000;  
 
@@ -41,7 +41,8 @@ classdef RDPG_FRS < handle
             y_traj = [];
             
             if ~isempty(plot_r)
-                plot_angle = -pi/2 - plot_sigma_t;
+                % Target의 실제 헤딩(gamma_t)을 반영하도록 수정
+                plot_angle = gamma_t + pi - plot_sigma_t;
                 x_traj = plot_r .* cos(plot_angle);
                 y_traj = plot_r .* sin(plot_angle);
             end
@@ -111,8 +112,8 @@ classdef RDPG_FRS < handle
                         % [4단계] Fail-Safe 탈출
                         % -------------------------------------------------------
 
-                        % Target frame에서 일정 sigma_pc을 유지했을 때 t_for 이후 예상 위치를 탐색
-                        [x_traj, y_traj] = obj.get_Boundary(obj.sigma_pref);
+                        % gamma_t를 인자로 넘겨서 Target 방향에 맞게 궤적 생성
+                        [x_traj, y_traj] = obj.get_Boundary(obj.sigma_pref, gamma_t);
                         
                         Distance_point = zeros(num_angles, 2); 
                         signed_distances = zeros(num_angles, 1);
@@ -121,7 +122,7 @@ classdef RDPG_FRS < handle
                         for i = 1:num_angles
                             sigma_pc_val = deg2rad(obj.sigma_FRS_list(i)); 
                             
-                            % 상대 운동 방정식
+                            % 상대 운동 방정식 (이 부분은 원래 gamma_t에 대해 완벽히 일반화되어 있음)
                             dydt = @(t, Y) [
                                 V_p * cos(atan2(-Y(2), -Y(1)) + sigma_pc_val) - V_t * cos(gamma_t);
                                 V_p * sin(atan2(-Y(2), -Y(1)) + sigma_pc_val) - V_t * sin(gamma_t)
@@ -181,8 +182,7 @@ classdef RDPG_FRS < handle
                                 mode_flag = 3; 
                                 point_value(best_idx, 2) = 1; 
                             else
-                                % 조건 2: 경계선 아래로 들어간 점이 하나도 없는 경우
-                                % 전체 후보군 중에서 물리적 거리(abs_distances)가 제일 짧은 각도 선택
+                                % 아직 아무것도 누적 안 된 경우 (후보가 없음)
                                 [~, min_idx] = min(abs_distances);
                                 sigma_pc = deg2rad(obj.sigma_FRS_list(min_idx));
                                 mode_flag = 4;
