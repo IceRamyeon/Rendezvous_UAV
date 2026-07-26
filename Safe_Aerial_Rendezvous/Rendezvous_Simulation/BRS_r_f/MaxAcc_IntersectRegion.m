@@ -156,5 +156,5 @@ title(ax, ...
     'FontWeight', 'bold', ...
     'Interpreter', 'latex');
 
-fprintf('<< 덧칠 완료 >>\n');
+fprintf(' 덧칠 완료~\n');
 fprintf('====================================================\n');

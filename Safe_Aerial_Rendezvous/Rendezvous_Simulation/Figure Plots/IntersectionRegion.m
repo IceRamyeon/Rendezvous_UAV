@@ -33,19 +33,6 @@ r_f_min = (y_max * V^2) / (2 * acc_limit);
 
 max_r_plot_limit = 1000; % 궤적 발산 방지용
 
-%% 2. 자동 저장 설정
-auto_save = false;
-target_path = 'C:\Users\jedie\OneDrive\문서\대학 자료\AISL 연구실\미팅 및 발표 자료\260402 랩미팅 준비';
-
-save_dir = fullfile(target_path);
-
-if auto_save
-    if ~exist(save_dir, 'dir')
-        mkdir(save_dir);
-        fprintf('\n>>> 전용 저장 폴더: %s\n', save_dir);
-    end
-end
-
 %% 3. 격자(Meshgrid) 생성 
 r_target_radius = 2.0; % 기준 반경 설정
 
@@ -59,13 +46,7 @@ Py_grid = R_grid .* sin(Theta_grid);
 Lam_grid = Theta_grid + pi;       
 Sigma_t_grid = psi_t - Lam_grid;
 
-%% 4. Custom Colormap 생성
-cmap = zeros(256, 3);
-cmap(1:50, :)   = repmat([0.8 0.6 1.0], 50, 1);     % Purple (-g 영역)
-cmap(51:180, :) = repmat([0.7 0.8 1.0], 130, 1);    % Blue (Safe 영역)
-cmap(181:256, :) = repmat([1.0 0.7 0.7], 76, 1);    % Red (+g 영역)
-
-%% 5. 단일 플롯 생성 및 그리기
+%% 4. 단일 플롯 생성 및 그리기
 figure('Name', 'Guidance Reachable Region Analysis', 'Theme', 'light', 'Position', [100, 100, 800, 700]);
 ax = gca; 
 hold(ax, 'on'); grid(ax, 'on'); axis(ax, 'equal');
@@ -78,13 +59,17 @@ Acc_cmd_grid = Term1 - Term2;
 % 혹시 모를 예외 방지로 2m 미만 영역은 NaN 처리
 Acc_cmd_grid(R_grid < r_target_radius) = NaN;
 
-% 영역 그리기 (Safe / Unsafe 배경)
-contourf(Px_grid, Py_grid, Acc_cmd_grid, [-100*acc_limit, -acc_limit, acc_limit, 100*acc_limit], 'LineColor', 'none');
-colormap(ax, cmap); clim(ax, [-2*acc_limit, 2*acc_limit]); 
+% +g 영역만 그리기 위한 처리 (파란색 Safe 및 보라색 -g 영역 제거)
+Acc_cmd_grid_red = Acc_cmd_grid;
+Acc_cmd_grid_red(Acc_cmd_grid_red < acc_limit) = NaN;
 
-% 빨간색(+g), 보라색(-g) 경계선 (Max Acc Region) 그리기
+% 빨간 영역(Unsafe +g) 그리기
+contourf(Px_grid, Py_grid, Acc_cmd_grid_red, [acc_limit, 100*acc_limit], 'FaceColor', [1.0 0.7 0.7], 'LineColor', 'none');
+
+% 빨간색(+g) 경계선 (Max Acc Region) 그리기
 contour(Px_grid, Py_grid, Acc_cmd_grid, [acc_limit acc_limit], 'r', 'LineWidth', 1.5);
-contour(Px_grid, Py_grid, Acc_cmd_grid, [-acc_limit -acc_limit], 'm', 'LineWidth', 1.5);
+% 보라색 경계선은 주석 처리
+% contour(Px_grid, Py_grid, Acc_cmd_grid, [-acc_limit -acc_limit], 'm', 'LineWidth', 1.5);
 
 % DPG 도달 가능 영역 시각화
 draw_DPG_Region(ax, sigma_pc_rad, r_f_max);
@@ -145,55 +130,45 @@ else
         plot(x_contact, y_contact, 'rp', 'MarkerSize', 12, 'MarkerFaceColor', 'r', 'LineWidth', 1);
     end
     
-    txt_range = sprintf('%.2f m < r_f < %.2f m', r_f_min, r_f_max);
-    text(-17, -50, txt_range, 'FontSize', 16, 'FontWeight', 'bold', 'Color', 'k', 'HorizontalAlignment', 'center', 'BackgroundColor', 'w');
+    % [주석 처리 완료] Text 제거
+    % txt_range = sprintf('%.2f m < r_f < %.2f m', r_f_min, r_f_max);
+    % text(-17, -50, txt_range, 'FontSize', 16, 'FontWeight', 'bold', 'Color', 'k', 'HorizontalAlignment', 'center', 'BackgroundColor', 'w');
 end
 
 % =========================================================
 % 랑데부 라인 표시
 % =========================================================
-plot_angle_intersect = -pi/2 - sigma_pc_rad;
+% plot_angle_intersect = -pi/2 - sigma_pc_rad;
 
-% 파란색 sigma_pc line (반경 2m 지점부터 시작하도록 유지)
-line_len = 30; 
-plot([r_target_radius * cos(plot_angle_intersect), line_len * cos(plot_angle_intersect)], ...
-     [r_target_radius * sin(plot_angle_intersect), line_len * sin(plot_angle_intersect)], ...
-     'b-', 'LineWidth', 1.5, 'DisplayName', '\sigma_t = \sigma_{pc} Line');
-
-% [삭제 완료] r_f DPG 및 r_f BRS의 별 모양 마커 표시 코드 완전 제거
+% 파란색 sigma_pc line 주석 처리 완료
+% line_len = 30; 
+% plot([r_target_radius * cos(plot_angle_intersect), line_len * cos(plot_angle_intersect)], ...
+%      [r_target_radius * sin(plot_angle_intersect), line_len * sin(plot_angle_intersect)], ...
+%      'b-', 'LineWidth', 1.5, 'DisplayName', '\sigma_t = \sigma_{pc} Line');
 
 % 제목 업데이트
-title(sprintf('BRS Region Analysis: \\sigma_{pc} = %.1f^\\circ', sigma_pc_deg), 'FontSize', 14, 'FontWeight', 'bold');
+% title(sprintf('BRS Region Analysis: \\sigma_{pc} = %.1f^\\circ', sigma_pc_deg), 'FontSize', 14, 'FontWeight', 'bold');
 
-% [수정] 중심에 Target을 빨간색 삼각형으로 생성 (높이 2m, y축 범위 [-1, +1], 위를 보는 방향)
-target_x = [0, -1, 1];
-target_y = [1, -1, -1];
+% [수정] 중심에 Target을 빨간색 화살촉(Chevron) 모양으로 생성
+target_x = [0, 1, 0, -1];
+target_y = [1, -1, -0.2, -1];
 fill(ax, target_x, target_y, 'r', 'EdgeColor', 'k', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 
 % 축 범위 및 라벨
-xlim([-90, 10]); ylim([-50, 50]);
+xlim([-50, 2]); ylim([-25, 25]);
 xlabel('x (m)', 'FontSize', 12); 
 ylabel('y (m)', 'FontSize', 12);
 
-% 범례(Legend) 설정 (불필요한 항목 정리)
+% 범례(Legend) 설정 (필요 없는 항목들 싹 지움)
 h_red   = plot(nan, nan, 'r', 'LineWidth', 1.5);
-h_purp  = plot(nan, nan, 'm', 'LineWidth', 1.5);
-h_safe  = patch(nan, nan, [0.7 0.8 1.0], 'EdgeColor', 'none'); 
 h_reach = patch(nan, nan, [0.8 0.7 0], 'EdgeColor', 'none'); 
 h_inter = patch(nan, nan, [0 0.8 0], 'EdgeColor', 'none'); 
 h_tangent = plot(nan, nan, 'rp', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
-h_sigma_line = plot(nan, nan, 'b-', 'LineWidth', 1.5);
 
-legend([h_red, h_purp, h_safe, h_reach, h_inter, h_tangent, h_sigma_line], ...
-    {'+g Limit (Unsafe)', '-g Limit (Unsafe)', 'Safe Region', 'DPG Reachable Region', ...
-     'Intersect Region', 'Tangent Point', '\sigma_{pc} Line'}, ...
-    'Location', 'northwest', 'FontSize', 10);
+text(ax, -10, -3, sprintf('Tangent Point'), ...
+    'FontSize', 12, 'FontWeight', 'bold', 'Color', 'r', 'HorizontalAlignment', 'left');
 
-%% 6. 자동 저장
-if auto_save
-    filename = sprintf('Intersection_Result_%.1f_deg.png', sigma_pc_deg);
-    full_path = fullfile(save_dir, filename);
-    exportgraphics(ax, full_path, 'Resolution', 300); 
-    fprintf('    [저장 완료] %s\n', filename);
-    fprintf('>>> 저장 끝! 선생, 고생했어~ 으헤.\n');
-end
+% legend([h_red, h_reach, h_inter, h_tangent], ...
+%     {'+g Limit (Unsafe)', 'DPG Reachable Region', ...
+%      'Intersect Region', 'Tangent Point'}, ...
+%     'Location', 'northwest', 'FontSize', 10);

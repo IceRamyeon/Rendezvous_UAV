@@ -1,0 +1,178 @@
+close all;
+clc; clear;
+
+%% 1. INPUT PARAMETERS (입력: 센서 데이터 및 항법 정보)
+R2D = 180/pi;
+D2R = pi/180;
+
+% ---------------------------------------------------------
+% [센서/항법 데이터 입력]
+% ---------------------------------------------------------
+
+% 1. Target 정보 (Inertial Frame)
+x_t = 4.0;              % Target X 좌표
+y_t = 6.0;              % Target Y 좌표
+psi_t_deg = 30;        % Target 헤딩 (전역 좌표계, degree)
+
+% 2. 상대 측정 정보 (Radar/Sensor)
+R = 15.0;                % Target과 Pursuer 사이의 거리 (m)
+bearing_deg = -30.0;   % Target Body Frame에서의 Bearing 각도 (degree)
+                        % (+: 우측/시계방향, -: 좌측/반시계방향)
+
+% 3. Pursuer 정보 (Global Frame)
+psi_p_deg = -120;         % Pursuer 헤딩 (Golbal Frame, degree)
+
+% ---------------------------------------------------------
+
+
+%% 2. STATE CONSTRUCTION
+
+% (1) 각도 단위 변환
+psi_t = psi_t_deg * D2R;
+psi_p = psi_p_deg * D2R;
+bearing = bearing_deg * D2R;
+
+% (2) Pursuer 위치 복구 (핵심!)
+% 논리: Global Frame에서 Target -> Pursuer로 향하는 각도 계산
+% Bearing은 Target 헤딩(psi_t) 기준으로 시계방향(+)으로 돌아간 각도이므로,
+% 전역 각도 = psi_t - Bearing
+theta_global_TtoP = psi_t - bearing;
+
+% 위치 역산
+x_p = x_t + R * cos(theta_global_TtoP);
+y_p = y_t + R * sin(theta_global_TtoP);
+
+% (3) 기하학적 변수 재계산 (Plot을 위해)
+% 시선각 (Lambda: P -> T 기준일 수도 있고 T -> P 일 수도 있음. 보통 LOS는 P->T)
+% 여기서는 아까 코드와 동일하게 P -> T 방향 벡터 각도로 계산
+dx = x_t - x_p;
+dy = y_t - y_p;
+lambda = atan2(dy, dx);
+lambda_deg = lambda * R2D;
+
+% 리드각 (Sigma)
+sigma_p = psi_p - lambda;
+sigma_t = psi_t - lambda;
+
+sigma_p_deg = wrapTo180(sigma_p * R2D);
+sigma_t_deg = wrapTo180(sigma_t * R2D);
+
+
+%% 3. BODY FRAME TRANSFORMATION (Figure 2용)
+
+% Target Heading을 90도(+Y)로 맞추기 위한 회전각
+theta_rot = (pi/2) - psi_t; 
+Rot_Mat = [cos(theta_rot), -sin(theta_rot); sin(theta_rot), cos(theta_rot)];
+
+% Target 기준 P의 위치 (상대 위치 -> 회전)
+vec_p_rel = [x_p - x_t; y_p - y_t]; 
+p_body = Rot_Mat * vec_p_rel;       
+
+% 헤딩 각도 변환
+psi_p_body = psi_p + theta_rot;
+
+% (검증용) Body Frame에서 Bearing 다시 계산
+theta_p_body = atan2(p_body(2), p_body(1)); 
+calc_bearing_rad = (pi/2) - theta_p_body; 
+
+
+%% 4. VISUALIZATION (시각화 - 이전과 동일한 포맷)
+
+scale = R * 0.3; 
+margin = 2;
+
+% =========================================================================
+% FIGURE 1: Global Inertial Frame (복구된 좌표 사용)
+% =========================================================================
+figure('Color', 'k', 'Position', [50 100 700 700]);
+hold on; grid on; axis equal;
+xlabel('X [km]'); ylabel('Y [km]');
+title('[Fig 1: Global Inertial Frame]');
+
+% LOS Line
+plot([x_p x_t], [y_p y_t], 'y--', 'LineWidth', 1);
+
+% Vectors
+quiver(x_p, y_p, scale*cos(psi_p), scale*sin(psi_p), 'Color', 'b', 'LineWidth', 2, 'MaxHeadSize',0.5,'AutoScale','off');
+quiver(x_t, y_t, scale*cos(psi_t), scale*sin(psi_t), 'Color', 'r', 'LineWidth', 2, 'MaxHeadSize',0.5,'AutoScale','off');
+
+% Points
+plot(x_p, y_p, 'bo', 'MarkerFaceColor', 'b');
+plot(x_t, y_t, 'ro', 'MarkerFaceColor', 'r');
+
+% Text Info
+info_p_global = sprintf('  P\n  \\psi_p: %.0f\\circ\n  \\sigma_p: %.1f\\circ', psi_p_deg, sigma_p_deg);
+text(x_p, y_p, info_p_global, 'Color', 'b', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
+
+info_t_global = sprintf('  T\n  \\psi_t: %.0f\\circ\n  \\sigma_t: %.1f\\circ', psi_t_deg, sigma_t_deg);
+text(x_t, y_t, info_t_global, 'Color', 'r', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
+
+text((x_p+x_t)/2, (y_p+y_t)/2, sprintf(' R=%.2fkm\n \\lambda=%.1f\\circ', R, lambda_deg), ...
+    'HorizontalAlignment', 'center', 'BackgroundColor', 'k', 'EdgeColor', 'w', 'Margin', 3);
+
+xlim([min(x_p, x_t)-margin, max(x_p, x_t)+margin]);
+ylim([min(y_p, y_t)-margin, max(y_p, y_t)+margin]);
+
+
+% =========================================================================
+% FIGURE 2: Target Body Frame (Bearing 포함)
+% =========================================================================
+figure('Color', 'k', 'Position', [700 100 700 700]);
+hold on; grid on; axis equal;
+xlabel('Relative X [km] (Right)'); ylabel('Relative Y [km] (Forward)');
+title('Fig 2: Target Body Frame (Input Bearing Visualization)');
+
+% 기준선
+x_lims = [-R-margin, R+margin]; y_lims = [-R-margin, R+margin];
+plot(x_lims, [0 0], 'y:', 'LineWidth', 0.5); 
+plot([0 0], y_lims, 'y:', 'LineWidth', 0.5); 
+plot([0 p_body(1)], [0 p_body(2)], 'g--', 'LineWidth', 1.5); % LOS
+
+% 화살표
+quiver(0, 0, 0, scale, 'Color', 'r', 'LineWidth', 3, 'MaxHeadSize', 0.5, 'AutoScale','off'); % T
+quiver(p_body(1), p_body(2), scale*cos(psi_p_body), scale*sin(psi_p_body), ...
+    'Color', 'b', 'LineWidth', 2, 'MaxHeadSize', 0.5, 'AutoScale','off'); % P
+
+plot(0, 0, 'ro', 'MarkerFaceColor', 'r', 'MarkerSize', 10);
+plot(p_body(1), p_body(2), 'bo', 'MarkerFaceColor', 'b', 'MarkerSize', 8);
+
+% Bearing Arc (부채꼴)
+r_arc = scale * 0.6; 
+ang_start = pi/2; 
+ang_end = (pi/2) - bearing; % Bearing은 +Y(pi/2)에서 뺀 각도
+
+% Arc 그리기용 각도 배열
+if abs(ang_start - ang_end) > pi
+    % 180도 넘어가는 경우 예외처리
+    if ang_end > ang_start, t_arc = linspace(ang_start+2*pi, ang_end, 30);
+    else, t_arc = linspace(ang_start, ang_end+2*pi, 30); end
+else
+    t_arc = linspace(ang_start, ang_end, 30);
+end
+plot(r_arc * cos(t_arc), r_arc * sin(t_arc), 'r-', 'LineWidth', 1.5);
+
+% Bearing Text
+text_x = r_arc * 1.2 * cos((ang_start + ang_end)/2);
+text_y = r_arc * 1.2 * sin((ang_start + ang_end)/2);
+text(text_x, text_y, sprintf('Bearing: %.1f\\circ', bearing_deg), ...
+    'Color', 'r', 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+
+% 정보 텍스트
+text(0, scale*1.1, ' Heading (+Y)', 'Color', 'r', 'FontSize', 9);
+info_p_body = sprintf('  Pursuer\n  Rel Head: %.1f\\circ\n  \\sigma_p: %.1f\\circ', ...
+    wrapTo180(psi_p_body*R2D - 90), sigma_p_deg); 
+text(p_body(1), p_body(2), info_p_body, 'Color', 'b', 'FontWeight', 'bold', 'VerticalAlignment', 'bottom');
+
+info_t_body = sprintf('  Target\n  \\sigma_t : %.1f\\circ', sigma_t_deg);
+text(0, 0, info_t_body, 'Color', 'r', 'FontWeight', 'bold', 'VerticalAlignment', 'top', 'HorizontalAlignment', 'left');
+
+xlim([min(0, p_body(1))-margin, max(0, p_body(1))+margin]);
+ylim([min(0, p_body(2))-margin, max(0, p_body(2))+margin]);
+
+hold off;
+
+if abs(bearing) <= abs(sigma_p)
+    fprintf("랑데뷰 가능");
+else
+    fprintf("랑데뷰 불가능");
+end

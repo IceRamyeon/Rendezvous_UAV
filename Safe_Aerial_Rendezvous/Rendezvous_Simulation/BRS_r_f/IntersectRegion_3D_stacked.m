@@ -3,6 +3,7 @@ clear; clc; close all;
 %% =========================================================
 %  1. 기본 파라미터 및 스케일 팩터
 % =========================================================
+scale = 1;               
 
 V = 20.0;                  
 g = 9.81;
@@ -37,7 +38,7 @@ view(ax, -40, 30);
 colormap(ax, 'parula');     
 
 fprintf('\n====================================================\n');
-fprintf(' 3D Intersect Region 곡면 렌더링 시작\n');
+fprintf(' 3D Intersect Region 곡면 렌더링 시작 (스케일: %d)\n', scale);
 fprintf('====================================================\n');
 
 %% =========================================================
@@ -145,13 +146,42 @@ surf(ax, X_mesh, Y_mesh, Z_mesh, C_mesh, ...
 camlight(ax, 'headlight');
 lighting(ax, 'gouraud');
 
+%% =========================================================
+%  6. Target 및 후처리
+% =========================================================
+% target_x = [0, -1, 0, 1] * scale;
+% target_y = [1, -1, -0.3, -1] * scale;
+% target_z = [0, 0, 0, 0]; 
+
+% fill3( ...
+%     ax, target_x, target_y, target_z, 'r', ...
+%     'EdgeColor', 'k', 'LineWidth', 1.5);
+
+% theta_circle = linspace(0, 2*pi, 300);
+% plot3( ...
+%     ax, ...
+%     (r_target_radius * scale) * cos(theta_circle), ...
+%     (r_target_radius * scale) * sin(theta_circle), ...
+%     zeros(size(theta_circle)), ...
+%     'k--', 'LineWidth', 1.2);
+
 % 이전 x, y축 스케일 범위로 복구
-xlim(ax, [-100 , 0]);
-ylim(ax, [-50 , 50]);
+xlim(ax, [-100 * scale, 0]);
+ylim(ax, [-50 * scale, 50 * scale]);
 zlim(ax, [0, 90]);
 
 xlabel(ax, 'x (m)', 'FontSize', 12);
 ylabel(ax, 'y (m)', 'FontSize', 12);
+
+if scale == 1
+    zlabel(ax, '\sigma_{pc} (deg)', 'FontSize', 12);
+else
+    zlabel(ax, sprintf('\\sigma_{pc} \\times %d', scale), 'FontSize', 12);
+end
+
+% title(ax, ...
+%     sprintf('3D Continuous Intersect Region (Scale = %d)', scale), ...
+%     'FontSize', 15, 'FontWeight', 'bold');
 
 cb = colorbar(ax);
 cb.Label.String = '\sigma_{p} (deg)';

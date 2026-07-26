@@ -1,6 +1,16 @@
+%%  IsPointRegion.m
+% 입력한 점이 Reachable Region 안에 있는지 판별하는 함수
+
 clear; clc; close all;
 
-%% =========================================================
+% =========================================================
+% 0. Input Point (Bearing Angle)
+% Target heading (+y축) 기준: CW (+), CCW (-)
+% =========================================================
+r_pt = 400;
+theta_pt_deg = -80;
+
+% =========================================================
 %  1. 기본 파라미터 및 스케일 팩터
 % =========================================================
 
@@ -38,7 +48,7 @@ fprintf('====================================================\n');
 %% =========================================================
 %  3. sigma_pc = 0도 ~ 90도 Sweep (어두운 초록색 덧칠)
 % =========================================================
-dark_green = [0.6, 0.6, 0.6];
+dark_green = [0, 0.5, 0];
 
 for i_sigma = 1:num_sigma
 
@@ -49,7 +59,7 @@ for i_sigma = 1:num_sigma
         continue;
     end
 
-    % r_f_min 계산 (이 값도 스케일에 맞춰 비례하도록 수정)
+    % r_f_min 계산 
     sigma_t_calc = linspace(0, pi, 50000);
     
     y_calc = ...
@@ -71,10 +81,8 @@ for i_sigma = 1:num_sigma
     r_min_traj = r_f_min * cos(sigma_pc_rad)^2 ./ denominator;
     r_max_traj = r_f_max * cos(sigma_pc_rad)^2 ./ denominator;
 
-    % [디버깅 핵심] 발산하는 영역의 인덱스를 날리지 않고 최대치로 고정(cap)
     r_max_traj = min(r_max_traj, max_r_plot_limit);
 
-    % r_max_traj 한계 초과 필터링 제거
     valid_idx = ...
         isfinite(r_min_traj) ...
         & isfinite(r_max_traj) ...
@@ -123,7 +131,7 @@ for i_sigma = 1:num_sigma
     end
 end
 
-%% =========================================================
+% =========================================================
 %  4. Target 및 후처리
 % =========================================================
 target_x = [0, -1, 0, 1];
@@ -140,10 +148,78 @@ plot( ...
     r_target_radius * sin(theta_circle), ...
     'k--', 'LineWidth', 1.2);
 
-x_lb = 100 * -1;
-x_up = 10 * 1;
-y_lb = 50 * -1;
-y_up = 50 * 1;
+% =========================================================
+%  5. Input Point 영역 포함 여부 검사 및 표시 (Bearing Angle 기준)
+% =========================================================
+theta_pt_rad = deg2rad(theta_pt_deg);
+
+% Target heading(+y축)을 기준으로 CW(+), CCW(-)
+x_pt = r_pt * sin(theta_pt_rad);
+y_pt = r_pt * cos(theta_pt_rad);
+
+% 플롯 각도 정의(plot_angle = -pi/2 - sigma_t)에 따른 역산
+% cos(plot_angle) = x/r, sin(plot_angle) = y/r
+% sigma_t_pt = -pi/2 - plot_angle 
+% => cos(sigma_t_pt) = -y/r, sin(sigma_t_pt) = -x/r
+% => sigma_t_pt = atan2(-x_pt, -y_pt)
+sigma_t_pt = atan2(-x_pt, -y_pt);
+is_inside = false;
+
+for i_sigma = 1:num_sigma
+    sigma_pc_deg = sigma_pc_deg_list(i_sigma);
+    sigma_pc_rad = deg2rad(sigma_pc_deg);
+
+    if abs(cos(sigma_pc_rad)) < 1e-10
+        continue;
+    end
+
+    % r_f_min 동일하게 계산
+    sigma_t_calc = linspace(0, pi, 50000);
+    y_calc = (sin(sigma_t_calc) - sin(sigma_pc_rad)) .* (1 + cos(sigma_t_calc + sigma_pc_rad)) ./ (cos(sigma_pc_rad)^2 + epsilon);
+    r_f_min = ((max(y_calc) * V^2) / (2 * acc_limit));
+
+    if r_f_min > r_f_max || r_f_min < 0
+        continue;
+    end
+
+    % 해당 sigma_pc에서 점의 각도가 유효한지 확인
+    if sigma_t_pt >= -sigma_pc_rad && sigma_t_pt <= (pi - sigma_pc_rad)
+        
+        % 해당 각도에서의 r_min과 r_max 경계 계산
+        denominator = cos((sigma_t_pt + sigma_pc_rad) / 2)^2;
+        r_min_val = r_f_min * cos(sigma_pc_rad)^2 / denominator;
+        r_max_val = r_f_max * cos(sigma_pc_rad)^2 / denominator;
+        r_max_val = min(r_max_val, max_r_plot_limit);
+
+        % 점의 거리(r)가 해당 각도에서의 경계 안쪽에 있는지 판별
+        if r_pt >= r_min_val && r_pt <= r_max_val && r_min_val >= r_target_radius
+            is_inside = true;
+            break; 
+        end
+    end
+end
+
+% 결과 출력
+fprintf(' 덧칠 완료\n');
+fprintf('====================================================\n');
+if is_inside
+    fprintf(' [결과] 입력한 점 (r=%.1f, theta=%.1f도)은 영역 안에 있음.\n', r_pt, theta_pt_deg);
+else
+    fprintf(' [결과] 입력한 점 (r=%.1f, theta=%.1f도)은 영역 밖에 있음.\n', r_pt, theta_pt_deg);
+end
+fprintf('====================================================\n');
+
+% ---------------------------------------------------------
+% 플롯에 입력한 점 그리기 및 축 한계 조절
+% ---------------------------------------------------------
+plot(ax, x_pt, y_pt, 'bp', 'MarkerFaceColor', 'b', 'MarkerSize', 12);
+text(ax, x_pt, y_pt, sprintf('  Input Point'), 'Color', 'b', 'FontSize', 12, 'FontWeight', 'bold');
+
+% 점이 잘리지 않도록 기존 축 범위와 점의 위치를 비교해서 유동적으로 축 설정
+x_lb = min([100 * -1, x_pt - 50]);
+x_up = max([10,  x_pt + 50]);
+y_lb = min([50 * -1, y_pt - 50]);
+y_up = max([50,  y_pt + 50]);
 
 xlim(ax, [x_lb, x_up]);
 ylim(ax, [y_lb, y_up]);
@@ -155,6 +231,3 @@ title(ax, ...
     'FontSize', 15, ...
     'FontWeight', 'bold', ...
     'Interpreter', 'latex');
-
-fprintf('<< 덧칠 완료 >>\n');
-fprintf('====================================================\n');

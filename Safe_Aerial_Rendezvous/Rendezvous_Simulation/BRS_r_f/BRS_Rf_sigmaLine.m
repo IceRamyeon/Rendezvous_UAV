@@ -171,7 +171,7 @@ target_y = [1, -1, -1];
 fill(ax, target_x, target_y, 'r', 'EdgeColor', 'k', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 
 % 축 범위 및 라벨
-xlim([-90, 10]); ylim([-50, 50]);
+xlim([-700, 100]); ylim([-400, 400]);
 xlabel('x (m)', 'FontSize', 12); 
 ylabel('y (m)', 'FontSize', 12);
 
