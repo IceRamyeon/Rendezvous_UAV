@@ -1,7 +1,7 @@
 %% main.m 컨트롤 타워
 close all; clc; clear;
 
-% [중요] 경로 설정에 새로 정의한 Helper_Function 디렉토리를 추가했어!
+% 필요 함수 디렉토리 설정
 addpath('./Rendezvous_Simulation/Guidance')
 addpath('./Rendezvous_Simulation/Initial_Conditions')
 addpath('./Rendezvous_Simulation/Plotting_function')
