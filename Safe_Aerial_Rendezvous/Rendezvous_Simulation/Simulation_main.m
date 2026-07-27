@@ -31,16 +31,16 @@ current_psi_p = psi_p; current_psi_t = psi_t;
 lambda_init = atan2(Yt_i - Yp_i, Xt_i - Xp_i);
 
 switch cfg.GUIDANCE_MODE
-    case 'RDPG_ACC'
-        % 초기 리드각 계산
-        init_sigma = current_psi_p - lambda_init;
-        missile_guidance = RDPG_ACC(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma);
-        
     case 'DPG'
         % 기존 DPG 객체 생성
-        dpg_target_deg = cfg.target_lead_angle_deg;
-        missile_guidance = DPG(dpg_target_deg, cfg.gain_k, cfg.limit_acc);
-        
+        missile_guidance = DPG(cfg.sigma_p0_deg, cfg.gain_k, cfg.limit_acc);
+
+    case 'PPNG'
+        missile_guidance = PPNG(cfg.N_PPNG, cfg.Bias_PPNG, cfg.limit_acc);
+
+    case 'VDPG'
+        missile_guidance = VDPG(cfg.gain_k, cfg.limit_acc);
+
     case 'RDPG'
         % RDPG 객체 생성
         init_sigma = current_psi_p - lambda_init;
@@ -48,28 +48,16 @@ switch cfg.GUIDANCE_MODE
         test_mode_flag = 0;
         missile_guidance = RDPG(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
                                 rate_limit_rad, dt, init_sigma, test_mode_flag);
-                                
-    case 'RDPG_VT'
-        % [추가된 부분] RDPG_VT 객체 생성
-        init_sigma_real = current_psi_p - lambda_init;
-        init_sigma_vt = 0; % 가상 타겟용 초기 시선각 오차는 0으로 시작
-        
-        % 가상 타겟 전용 유도 파라미터 (필요하면 main에서 cfg로 넘기도록 빼도 돼)
-        test_mode_flag_vt = 0;
-        
-        missile_guidance = RDPG_VT(cfg.gain_k, cfg.limit_acc, cfg.r_allow, ...
-                                   dt, init_sigma_real, ...
-                                   cfg.r_allow, test_mode_flag_vt, init_sigma_vt, ...
-                                   cfg.r_vt, cfg.theta_vt_rad);
+
+    case 'RDPG_ACC'
+        % 초기 리드각 계산
+        init_sigma = current_psi_p - lambda_init;
+        missile_guidance = RDPG_ACC(cfg.gain_k, cfg.limit_acc, cfg.r_allow, dt, init_sigma);
 
     case 'RDPG_MIN'
         init_sigma = current_psi_p - lambda_init;
         rate_limit_rad = cfg.rate_limit_deg;
         missile_guidance = RDPG_MIN(cfg.gain_k, cfg.limit_acc, cfg.a_min, cfg.r_allow, dt, init_sigma, rate_limit_rad);
-        
-    case 'RDPG_r_f'
-        init_sigma = current_psi_p - lambda_init;
-        missile_guidance = RDPG_r_f(cfg.gain_k, cfg.limit_acc, cfg.r_f_escape, cfg.r_allow, dt, init_sigma); 
 
     case 'RDPG_FRS'
         init_sigma = current_psi_p - lambda_init;
@@ -86,6 +74,9 @@ hist_state = zeros(17, num_steps);
 
 % RDPG_FRS 용 cell 초기화
 point_value_hist = cell(1, num_steps);
+
+% VDPG 용 초기 r0 저장
+r_0 = cfg.r_pursuer;
     
 % 시뮬레이션 연산[cite: 4]
 for i = 1:num_steps
@@ -108,47 +99,30 @@ for i = 1:num_steps
     current_point_value = [];
 
     switch cfg.GUIDANCE_MODE
-        case 'RDPG_ACC'
-            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
         case 'DPG'
             acc_cmd = missile_guidance.compute_commandDPG(V_p, lambda_dot, sigma_p);
             sigma_ref_new = sigma_p; 
             mode_flag = -1;
+            
+        case 'PPNG'
+            acc_cmd = missile_guidance.compute_commandPPNG(V_p, lambda_dot);
+            sigma_ref_new = 0;
+            mode_flag = -1;
+
+        case 'VDPG'
+            acc_cmd = missile_guidance.compute_commandVDPG(V_p, lambda_dot, sigma_p, r, r_0, cfg.sigma_p0_deg);
+            sigma_ref_new = 0;
+            mode_flag = -1;
+
         case 'RDPG'
             [acc_cmd, sigma_ref_new] = missile_guidance.compute_commandRDPG(V_p, lambda_dot, sigma_p, r, sigma_t);
             mode_flag = -1;
-        case 'RDPG_VT'
-            % 1. 가상 타겟(Virtual Target)의 전역 좌표 계산
-            gamma_vt = current_psi_t - cfg.theta_vt_rad; 
-            X_vt = current_Xt + cfg.r_vt * cos(gamma_vt);
-            Y_vt = current_Yt + cfg.r_vt * sin(gamma_vt);
 
-            % 2. Pursuer와 가상 타겟 사이의 상대 기구학 계산
-            Rx_vt = X_vt - current_Xp;
-            Ry_vt = Y_vt - current_Yp;
-            r_vt_dist = sqrt(Rx_vt^2 + Ry_vt^2);
-            lambda_vt = atan2(Ry_vt, Rx_vt);
-
-            % 3. 가상 타겟 기준 시선각 오차 
-            sigma_p_vt = current_psi_p - lambda_vt;
-            sigma_t_vt = current_psi_t - lambda_vt;
-
-            % 4. 가상 타겟 기준 시선각 변화율 (lambda_dot_vt) 계산
-            lambda_dot_vt = (V_t * sin(sigma_t_vt) - V_p * sin(sigma_p_vt)) / r_vt_dist;
-
-            % 배열에 로깅하기 위해 변수 할당
-            x_vt_log = X_vt;
-            y_vt_log = Y_vt;
-
-            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(...
-            V_p, r, lambda_dot, sigma_p, sigma_t, ...
-            r_vt_dist, lambda_dot_vt, sigma_p_vt, sigma_t_vt);
+        case 'RDPG_ACC'
+            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
         
         case 'RDPG_MIN'
             [acc_cmd, sigma_ref_new, mode_flag, r_f_log] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
-
-        case 'RDPG_r_f'
-            [acc_cmd, sigma_ref_new, mode_flag] = missile_guidance.compute_command(V_p, lambda_dot, sigma_p, r, sigma_t);
 
         case 'RDPG_FRS'
             rel_x = current_Xp - current_Xt;

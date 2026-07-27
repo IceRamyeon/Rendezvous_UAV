@@ -1,4 +1,4 @@
-% DPG Final Points 집합과 특정 궤적 간의 최단 거리 찾기
+% RDPG_FRS Guidance의 Reference Lead Angle을 찾는 방법을 보여주는 함수
 clc; clear; close all;
 
 %% 1. DPG Final Points (Test Point Set) 계산
@@ -10,7 +10,7 @@ T = 3;
 
 % Pursuer의 초기 위치 (Target 기준 프레임)
 x0 = -800;
-y0 = 400;
+y0 = 600;
 
 sigma_pc_deg_set = -170:10:180; 
 final_points = zeros(length(sigma_pc_deg_set), 2);

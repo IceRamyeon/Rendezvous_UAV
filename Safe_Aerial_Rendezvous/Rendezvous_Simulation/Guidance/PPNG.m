@@ -20,10 +20,10 @@ classdef PPNG < handle
           end
         
         %% Method PPNG (Proportional Navigation)
-        function acc_cmd = compute_commandPPNG(obj, V_c, lambda_dot)
+        function acc_cmd = compute_commandPPNG(obj, V_p, lambda_dot)
             
             % [공식] a = N * V_c * lambda_dot + bias
-            raw_acc = (obj.N * V_c * lambda_dot) + obj.bias_acc;
+            raw_acc = (obj.N * V_p * lambda_dot) + obj.bias_acc;
             
             % Saturation
             if abs(raw_acc) > obj.max_acc

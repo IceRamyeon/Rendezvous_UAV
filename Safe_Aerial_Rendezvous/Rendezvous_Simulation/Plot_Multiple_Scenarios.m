@@ -1,4 +1,5 @@
 %% Plot_Multiple_Scenarios.m
+% main.m에서 target_path에 저장된 matlab 파일을 입력 받아 다수의 plot을 한꺼번에 plot하는 매트랩 파일
 clc; clear; close all;
 
 % Target 정보 입력
@@ -16,17 +17,24 @@ file_list = {
     'FRS_30.mat'
 };
 
-% RDPG 비교군 파일 리스트 (비워두면 file_list만 단독으로 플롯함)
+% List of comparison files(비워두면 file_list만 단독으로 플롯함)
 file_list_comparison = {
 };
 
-% 파일 리스트 개수와 반드시 일치해야 함.
-custom_names_prop = {'UAV1 (\sigma_{p0}=-30\circ, Proposed)', 'UAV2 (\sigma_{p0}=0\circ, Proposed)', 'UAV3 (\sigma_{p0}=30\circ, Proposed)'};
-custom_names_comp = {'UAV1 (\sigma_{p0}=40\circ, RDPG)', 'UAV2 (\sigma_{p0}=60\circ, RDPG)', 'UAV3 (\sigma_{p0}=80\circ, RDPG)'};
+% proposed method(line)
+custom_names_prop = {'UAV1 (\sigma_{p0}=-30\circ, Proposed)', ...
+                     'UAV2 (\sigma_{p0}=0\circ, Proposed)', ...
+                     'UAV3 (\sigma_{p0}=30\circ, Proposed)'};
+
+% comparison(dash-line)
+custom_names_comp = {'UAV1 (\sigma_{p0}=40\circ, RDPG)', ...
+                     'UAV2 (\sigma_{p0}=60\circ, RDPG)', ... 
+                     'UAV3 (\sigma_{p0}=80\circ, RDPG)'};
 % -----------------------------------------------------------
 
 % 파일이 저장된 폴더 경로
 data_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0724 랩미팅\Sim4.4';
+
 % 자동으로 PNG를 저장할 폴더 경로
 save_dir = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0724 랩미팅\Sim4.4\plots';
 

@@ -8,9 +8,9 @@ r_input = 100;
 min_theta = get_min_bearing_angle(r_input);
 
 if isnan(min_theta)
-    fprintf(' [결과] r = %.1f 인 지점에서는 영역에 포함되는 각도가 없는 것 같네.\n', r_input);
+    fprintf(' [결과] r = %.1f 인 지점에서는 영역에 포함되는 각도가 없음.\n', r_input);
 else
-    fprintf(' [결과] r = %.1f 일 때 가장 작은 bearing angle은 약 %.1f도야.\n', r_input, min_theta);
+    fprintf(' [결과] r = %.1f 일 때 가장 작은 bearing angle은 약 %.1f도.\n', r_input, min_theta);
 end
 
 function best_theta = get_min_bearing_angle(r_pt)
@@ -32,7 +32,7 @@ function best_theta = get_min_bearing_angle(r_pt)
     valid_sigma_idx = false(1, num_sigma);
     r_f_min_list = zeros(1, num_sigma);
     
-    % 최대값을 찾기 위한 배열 (속도를 위해 적당한 크기로 타협)
+    % 최대값을 찾기 위한 배열
     sigma_t_calc = linspace(0, pi, 10000); 
     
     for i_sigma = 1:num_sigma

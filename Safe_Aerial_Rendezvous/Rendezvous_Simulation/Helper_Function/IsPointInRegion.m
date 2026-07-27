@@ -1,4 +1,4 @@
-function is_inside = IsPointInRegion(r_pt, theta_pt_deg, V, acc_limit, r_f_max, r_target_radius, max_r_plot_limit)
+function is_inside = IsPointInRegion(r_pt, theta_pt_deg, V, acc_limit, r_f_max)
     % 입력한 점이 Reachable Region 안에 있는지 판별하는 함수
 
     epsilon = 1e-7;
@@ -40,10 +40,10 @@ function is_inside = IsPointInRegion(r_pt, theta_pt_deg, V, acc_limit, r_f_max, 
             denominator = cos((sigma_t_pt + sigma_pc_rad) / 2)^2;
             r_min_val = r_f_min * cos(sigma_pc_rad)^2 / denominator;
             r_max_val = r_f_max * cos(sigma_pc_rad)^2 / denominator;
-            r_max_val = min(r_max_val, max_r_plot_limit);
+            r_max_val = min(r_max_val, 20000);
     
             % 점의 거리(r)가 해당 각도에서의 경계 안쪽에 있는지 판별
-            if r_pt >= r_min_val && r_pt <= r_max_val && r_min_val >= r_target_radius
+            if r_pt >= r_min_val && r_pt <= r_max_val && r_min_val >= r_f_max
                 is_inside = true;
                 break; 
             end

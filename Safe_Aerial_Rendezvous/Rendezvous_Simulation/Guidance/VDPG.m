@@ -21,11 +21,12 @@ classdef VDPG < handle
 
         %% Method Deviated Pursuit Guidance
         % 필요한 인자: Pursuer 속도(V_p), 시선각 변화율, 현재 리드각, 현재 거리, 초기 거리, 초기 설정 각도
-        function acc_cmd = compute_commandVDPG(obj, V_p, lambda_dot, sigma_p, r, r0, sigma_init)
+        function acc_cmd = compute_commandVDPG(obj, V_p, lambda_dot, sigma_p, r, r0, sigma_init_deg)
             
             % 1. sigma_pc 계산 [수정됨]
             % (r / r0)를 곱해야 거리가 줄어들 때(r->0) 각도도 0이 됨
-            sigma_pc = ((r0 -r) / r0) * sigma_init;
+            sigma_init_rad = deg2rad(sigma_init_deg);
+            sigma_pc = ((r0 -r) / r0) * sigma_init_rad;
             
             % 2. u = psi_dot 계산
             u_cmd = lambda_dot - obj.k * (sigma_p - sigma_pc);

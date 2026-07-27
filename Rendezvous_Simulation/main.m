@@ -8,15 +8,16 @@ addpath('./Rendezvous_Simulation/Plotting_function')
 addpath('./Rendezvous_Simulation/Helper_Function')
 
 %% 1. 초기조건 및 시뮬레이션 파라미터 설정
-% RDPG : Reachability-based rendezvous guidance(2022)
+% PPNG : Pure Proportional Navigation Guidance
+% VDPG : Variable Proportional Navigation Guidance
+% DPG : Deviated Pursuit Guidance
+% RDPG : Reachability-based Rendezvous Guidance(2022)
 % RDPG_ACC : RDPG + Acceleration Limits(Fail-Safe : DPG)
-% RDPG_VT : RDPG + Acceleration Limits(Fail-Safe : Virtual Target)
-% RDPG_r_f : RDPG + Acceleration Limits(Fail-safe : Use r_f_escape)
-% RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use a_min)
+% RDPG_MIN : RDPG + Acceleration Limits(Fail-Safe : Use variable r_f)
 % RDPG_FRS : RDPG + Accleration Limits(Fail-Safe : FRS)
-cfg.GUIDANCE_MODE = 'RDPG';
+cfg.GUIDANCE_MODE = 'RDPG';         % ex) cfg.GUIDANCE_MODE = 'RDPG'
 
-% [초기 조건 입력] 
+% [초기 조건 입력]
 % Pursuer 상대 위치 및 리드각
 cfg.r_pursuer = 200;               % Target 기준 Pursuer의 초기 상대거리 [m]
 cfg.theta_pursuer = -60;             % Target 기준 Pursuer의 초기 상대방위각 [deg]
@@ -31,21 +32,13 @@ cfg.Yt_input_km = 0.0;      % Inertial Frame Target의 y좌표[km]
 cfg.psi_ti_deg = 120;        % Inertial Frame Target Heading Angle[deg]
 
 % 시뮬레이션 결과 저장
-cfg.auto_save = 1;          % Simulation 결과 자동저장 (1 : 자동 저장, 0 : 저장 안 함)
+cfg.auto_save = 0;          % Simulation 결과 자동저장 (1 : 자동 저장, 0 : 저장 안 함)
 target_path = 'C:\Users\최혁재\OneDrive\Desktop\AISL 자료\미팅 자료\0724 랩미팅\Sim4.2\RDPG\0'; % 저장 경로
 cfg.save_dir = fullfile(target_path);
 my_filename = sprintf('FRS_%.1f', sigma_p0_deg); % 최종 results들을 담은 파일 이름
 
-% RDPG_VT 관련 파라미터
-cfg.r_vt = 100.0;                           % Virtual Target의 거리[m]
-theta_vt_deg = -75;                       % Virtual Target의 bearing angle[deg]
-cfg.theta_vt_rad = deg2rad(theta_vt_deg);
-
 % RDPG_MIN 관련 파라미터
 cfg.a_min = 0.1;                        % Fail-Safe시 escape a_min [G]
-
-% RDPG_r_f 관련 파라미터
-cfg.r_f_escape = 200;                   % Fail-Safe시 escape r_f
 
 % RDPG_FRS 관련 파라미터
 cfg.t_for = 3;
@@ -54,7 +47,7 @@ cfg.sigma_FRS_list = -175: 3 : 180;
 
 % 시뮬레이션 및 애니메이션 타임 파라미터
 cfg.dt_simul = 0.01;                    % Time step
-cfg.tf = 30;                            % Total Simulation Time[s]
+cfg.tf = 5;                            % Total Simulation Time[s]
 cfg.pause_t = 0.1;                      % 초기 Simulation이 로딩으로 인해 Jump하는 것을 막기 위한 시뮬레이션 지연
 cfg.skip_frame = 40;                    % Simulation이 무거워지는 것을 막기 위해 Frame을 스킵함
 cfg.stop_condition = 0;                 % 일정 조건을 만족할 경우 자동으로 Stop.(0: off, 1 : on)
@@ -80,17 +73,22 @@ else
     cfg.target_lead_angle_deg = sigma_p0_deg;
     cfg.psi_p_auto = sigma_p0_deg - cfg.theta_pursuer - 90;
 end
-%% 3. [Theorem 1] 수식 직접 계산 기법 (Helper 함수 호출)
+%% 3. [Theorem 1] 수식 직접 계산 기법 및 Region 판별 (Helper 함수 호출)
 theory = Max_Point(sigma_p0_rad, cfg.r_allow, cfg.V_p);
 
+% IsPointInRegion을 통해 초기 위치가 영역 내부에 있는지 판별
+% 파라미터 매칭: V = cfg.V_p, acc_limit = cfg.limit_acc * 9.81, r_f_max = cfg.r_allow
+is_inside = IsPointInRegion(cfg.r_pursuer, cfg.theta_pursuer, cfg.V_p, cfg.limit_acc * 9.81, cfg.r_allow);
+
 fprintf('======================================================\n');
-fprintf('    [Max Acc 지점 예측]    \n');
+fprintf('    [Reachable Region 포함 여부 판별]    \n');
 fprintf('======================================================\n');
-fprintf('1. 고정 리드각 (sigma_p0)     : %.4f deg\n', sigma_p0_deg);
-fprintf('2. 예측된 임계 타겟각 (sigma_t*): %.4f deg\n', theory.sigma_t_star_deg);
-fprintf('3. 예측된 임계 거리 (r*)       : %.4f m\n', theory.r_star);
-fprintf('4. 예측된 최대 요구가속도 (a*) : %.4f m/s^2\n', theory.a_star);
-fprintf('======================================================\n');
+if is_inside
+    fprintf(' [결과] 입력한 Pursuer (r=%.1f, theta=%.1f도)는 영역 안에 있음.\n', cfg.r_pursuer, -cfg.theta_pursuer);
+else
+    fprintf(' [결과] 입력한 Pursuer (r=%.1f, theta=%.1f도)는 영역 밖에 있음.\n', cfg.r_pursuer, -cfg.theta_pursuer);
+end
+fprintf('======================================================\n\n');
 
 %% 4. 검증 시뮬레이션 실행 및 결과 회수
 [sim_results, sim_out] = Simulation_main(cfg, theory);
